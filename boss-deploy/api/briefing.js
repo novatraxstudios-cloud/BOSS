@@ -259,6 +259,38 @@ async function sendEmail(briefing, scoutPacket) {
   return { sent: true };
 }
 
+/* ---------- VERCEL KV (Upstash REST) ---------- */
+// Writes today's briefing so /api/latest can serve it without regenerating.
+async function kvCmd(cmd){
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return null;
+  const res = await fetch(process.env.KV_REST_API_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.KV_REST_API_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(cmd)
+  });
+  if (!res.ok) return null;
+  const j = await res.json();
+  return j.result;
+}
+
+function todayKey(){
+  const d = new Date();
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth()+1).padStart(2,"0");
+  const day = String(d.getUTCDate()).padStart(2,"0");
+  return `briefing:${y}-${m}-${day}`;
+}
+
+async function persistBriefing(payload){
+  const ok = await kvCmd(["SET", todayKey(), JSON.stringify(payload), "EX", 60*60*24*7]); // 7 day TTL
+  // Also maintain a "latest" pointer for /api/latest to find quickly
+  if (ok) await kvCmd(["SET", "briefing:latest", JSON.stringify(payload), "EX", 60*60*24*7]);
+  return !!ok;
+}
+
 /* ---------- SECRET CHECK ---------- */
 function requireSecret(req) {
   const url = new URL(req.url);
@@ -284,13 +316,18 @@ export default async function handler(req) {
     const scoutPacket = await fridayScout(vertical);
     const briefing = await generateBriefing(vertical, scoutPacket);
     const email = await sendEmail(briefing, scoutPacket);
-    return new Response(JSON.stringify({
+    const payload = {
       ok: true,
       vertical: vertical.name,
       sources_scouted: scoutPacket.evidence.length,
+      sources: (scoutPacket.evidence || []).map(e => ({ url: e.url, title: e.title })),
       briefing,
-      email
-    }, null, 2), {
+      email,
+      generated_at: new Date().toISOString()
+    };
+    const persisted = await persistBriefing(payload);
+    payload.persisted_to_kv = persisted;
+    return new Response(JSON.stringify(payload, null, 2), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
