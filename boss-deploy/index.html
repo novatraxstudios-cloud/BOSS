@@ -781,19 +781,15 @@
       <div class="module-hero">
         <div class="kicker">Module 02 · App Development Intelligence</div>
         <h1>App Pipeline</h1>
-        <p>Track every app idea from raw signal to BUILD, VALIDATE, WATCH, or KILL. Kanban + scorecard views. The pipeline feeds Friday's scouting into Boss's verdict funnel, then approved ideas hand off to Product Management. Phase 1 shows the structural shell. Phase 5 wires the live workflow.</p>
+        <p>Every briefing's top opportunity lands here. Approve the strongest to spawn a project that hands off to Product Management. Killed and watch-listed ideas stay archived for reference.</p>
       </div>
       <div class="export-row">
         <button class="export-btn" onclick="openBoard()">View Ideas Board <span class="arrow">▸</span></button>
         <button class="export-btn" onclick="runBriefing()">Run New Briefing <span class="arrow">▸</span></button>
-        <button class="export-btn">Approve for Product <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Pipeline Report .txt <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshPipeline()">Refresh <span class="arrow">▸</span></button>
       </div>
-      <div class="module-placeholder">
-        <div class="icon">◆ ◆ ◆</div>
-        <h3>Kanban View Coming Online</h3>
-        <p>Columns for Raw Signal, Researching, Validating, Approved for Product, Watching, Killed, Building. Each idea card surfaces pain score, monetization score, MVP complexity, verdict, and agent owner.</p>
-        <div class="phase-note">Phase 1 · Visual Shell · Phase 5 wires the live data model</div>
+      <div id="pipelineList" style="display:flex;flex-direction:column;gap:10px">
+        <div class="module-placeholder"><div class="icon">↻</div><h3>Loading briefings…</h3></div>
       </div>
     </section>
 
@@ -802,21 +798,10 @@
       <div class="module-hero">
         <div class="kicker">Module 03 · Product Management Team</div>
         <h1>Product Workspace</h1>
-        <p>P.A.C.E. plans sprints. S.C.O.P.E. owns the PRD, user stories, acceptance criteria. S.H.I.P. drives release readiness. Approved ideas land here first and stay until they ship. Every artifact exports as .txt for handoff to Claude or Codex.</p>
+        <p>S.C.O.P.E. owns PRD + scope. P.A.C.E. plans sprints + 90-day phases. S.H.I.P. owns release readiness. Each generator writes a structured doc to Supabase AND exports a numbered .txt file for handoff to Claude or Codex.</p>
       </div>
-      <div class="export-row">
-        <button class="export-btn">Export PRD .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Sprint Plan .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Phase Plan .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Build Walkthrough .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Claude/Codex Prompt .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Full 10-File Build Packet <span class="arrow">▸</span></button>
-      </div>
-      <div class="module-placeholder">
-        <div class="icon">P ▸ S ▸ S</div>
-        <h3>P.A.C.E. · S.C.O.P.E. · S.H.I.P.</h3>
-        <p>Approved-app selector at top. Then panels: PRD, scope (in / out), user stories, acceptance criteria, sprint plan, phase roadmap, release checklist, ship/no-ship recommendation.</p>
-        <div class="phase-note">Phase 5 · Product Management workflow</div>
+      <div id="productHost" style="display:flex;flex-direction:column;gap:14px">
+        <div class="module-placeholder"><div class="icon">↻</div><h3>Loading projects…</h3></div>
       </div>
     </section>
 
@@ -931,19 +916,17 @@
       <div class="module-hero">
         <div class="kicker">Module 09 · Reports & Exports</div>
         <h1>Reports Library</h1>
-        <p>Central place to search, filter, and download every .txt file the system has generated. Filter by date, department, project, report type, or agent. Bundle into full build packets. Regenerate stale reports. Mark approved.</p>
+        <p>Every .txt file the system has generated, downloadable. Filter by department or project. Click any row to download.</p>
       </div>
       <div class="export-row">
-        <button class="export-btn">Full Build Packet (10 files) <span class="arrow">▸</span></button>
-        <button class="export-btn">Filter by Department <span class="arrow">▸</span></button>
-        <button class="export-btn">Filter by Project <span class="arrow">▸</span></button>
-        <button class="export-btn">Filter by Date <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshReports()">Refresh <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshReports('pm')">Product only <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshReports('ux')">Design only <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshReports('mkt')">Marketing only <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshReports('sec')">Security only <span class="arrow">▸</span></button>
       </div>
-      <div class="module-placeholder">
-        <div class="icon">.txt × .txt × .txt</div>
-        <h3>20+ Report Types Tracked</h3>
-        <p>MVP spec, PRD, sprint plan, UI/UX plan, marketing plan, security report, trading watchlist, step-by-step walkthrough, Claude/Codex prompt, risk register, launch checklist, morning briefing, weekly digest, app store listing, UGC scripts, community plan, bug report, incident report, ops summary, agent run log.</p>
-        <div class="phase-note">Phase 4 · TXT export engine</div>
+      <div id="reportsList" style="display:flex;flex-direction:column;gap:8px">
+        <div class="module-placeholder"><div class="icon">↻</div><h3>Loading files…</h3></div>
       </div>
     </section>
 
@@ -3469,11 +3452,9 @@ function wireRail(){
 function switchModule(id){
   if(!id) id = "command";
   state.activeModule = id;
-  // Toggle sidebar active state
   document.querySelectorAll(".nav-item").forEach(b=>{
     b.classList.toggle("active", b.dataset.module === id);
   });
-  // Toggle command vs other modules
   const cmd = $("cmdModule");
   if(cmd){
     if(id === "command"){ cmd.classList.remove("hidden"); }
@@ -3482,12 +3463,227 @@ function switchModule(id){
   document.querySelectorAll(".module-stage").forEach(s=>{
     s.classList.toggle("active", s.dataset.module === id);
   });
-  // Repaint Command Center if we just landed there
-  if(id === "command"){ renderDeptGrid(); }
-  // Stage attribute for any CSS that wants to react
+  // Per-module data loaders
+  if(id === "command")  { renderDeptGrid(); }
+  if(id === "pipeline") { refreshPipeline(); }
+  if(id === "product")  { refreshProductWorkspace(); }
+  if(id === "reports")  { refreshReports(); }
   const stage = $("stage");
   if(stage) stage.dataset.activeModule = id;
   log("SYS",`▶ Module: ${id.toUpperCase()}.`,"sys");
+}
+
+/* ---------- APP PIPELINE ---------- */
+async function refreshPipeline(){
+  const host = $("pipelineList");
+  if(!host) return;
+  host.innerHTML = `<div class="module-placeholder"><div class="icon">↻</div><h3>Loading briefings…</h3></div>`;
+  try{
+    // Use existing board data if we have it, otherwise fetch fresh
+    let rows = state.board;
+    if(!rows){
+      const r = await fetch("/api/board?limit=60", { cache: "no-store" });
+      const j = await r.json();
+      rows = j.board || [];
+      state.board = rows;
+    }
+    // Also pull existing projects so we can mark which briefings are already approved
+    const pr = await fetch("/api/projects/list");
+    const pj = await pr.json();
+    const projects = pj.projects || [];
+    const approvedBriefings = new Set(projects.map(p => p.source_briefing_id).filter(Boolean));
+
+    if(!rows.length){
+      host.innerHTML = `<div class="module-placeholder"><div class="icon">∅</div><h3>No briefings yet</h3><p>Run a briefing from the Command Center, then come back here to approve the top idea.</p></div>`;
+      return;
+    }
+
+    host.innerHTML = rows.map(b => {
+      const isApproved = approvedBriefings.has(b.id);
+      const verdict = (b.top_verdict||"WATCH").toUpperCase();
+      const date = new Date(b.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+      const oneLine = (b.payload?.briefing?.top?.one_line || "").slice(0,180);
+      return `<div class="dept-card" style="cursor:default">
+        <div class="dept-num">${date} · ${b.vertical||""}</div>
+        <div class="dept-name" style="font-size:14px">${escapeHtml(b.top_name||"Untitled")}</div>
+        <div class="dept-mission" style="min-height:auto;margin-bottom:14px">${escapeHtml(oneLine)}</div>
+        <div style="display:flex;align-items:center;gap:10px;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="verdict-pill ${verdict}" style="padding:3px 9px;font-family:ui-monospace,monospace;font-weight:900;font-size:10px;letter-spacing:.2em;background:${verdict==="BUILD"?"var(--ok)":verdict==="VALIDATE"?"var(--ember)":verdict==="WATCH"?"var(--line)":"var(--danger)"};color:${verdict==="BUILD"?"#031810":verdict==="VALIDATE"?"#1a0a00":verdict==="WATCH"?"#021018":"#fff"}">${verdict}</span>
+            <span style="color:#fff;font-family:ui-monospace,monospace">${Number(b.top_score||0).toFixed(1)} / 10</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            ${isApproved
+              ? `<button class="export-btn" onclick="switchModule('product')" style="padding:8px 14px">✓ In Product Workspace ▸</button>`
+              : `<button class="export-btn" style="padding:8px 14px;border-color:var(--ember);color:var(--ember)" onclick="approveBriefing('${b.id}','${escapeHtml(b.top_name||"").replace(/'/g,"&#39;")}',this)">▶ Approve for Product</button>`
+            }
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+  }catch(e){
+    host.innerHTML = `<div class="module-placeholder"><div class="icon">!</div><h3>Couldn't load</h3><p>${escapeHtml(e.message)}</p></div>`;
+  }
+}
+
+async function approveBriefing(briefingId, name, btn){
+  if(btn){ btn.disabled = true; btn.textContent = "Approving…"; }
+  try{
+    const r = await fetch("/api/projects/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ briefing_id: briefingId })
+    });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || "approve failed");
+    toast(`Approved: ${name}. Project created in Product Workspace.`);
+    log("BOSS",`Approved ${name} → Product Workspace`,"ok");
+    // Refresh both views
+    state.projects = null;
+    await refreshPipeline();
+  }catch(e){
+    toast("Approval failed: " + e.message);
+    if(btn){ btn.disabled = false; btn.textContent = "▶ Approve for Product"; }
+  }
+}
+
+/* ---------- PRODUCT WORKSPACE ---------- */
+async function refreshProductWorkspace(){
+  const host = $("productHost");
+  if(!host) return;
+  host.innerHTML = `<div class="module-placeholder"><div class="icon">↻</div><h3>Loading projects…</h3></div>`;
+  try{
+    const r = await fetch("/api/projects/list");
+    const j = await r.json();
+    const projects = j.projects || [];
+    state.projects = projects;
+    if(!projects.length){
+      host.innerHTML = `<div class="module-placeholder"><div class="icon">∅</div><h3>No projects yet</h3><p>Approve a briefing's top idea from the App Pipeline. Approved ideas land here.</p><div class="phase-note">→ Switch to App Pipeline to approve one</div></div>`;
+      return;
+    }
+    // Active project = first one in state, else first in list
+    if(!state.activeProjectId || !projects.find(p=>p.id===state.activeProjectId)){
+      state.activeProjectId = projects[0].id;
+    }
+    renderProductForActive();
+  }catch(e){
+    host.innerHTML = `<div class="module-placeholder"><div class="icon">!</div><h3>Couldn't load</h3><p>${escapeHtml(e.message)}</p></div>`;
+  }
+}
+
+function renderProductForActive(){
+  const host = $("productHost");
+  const projects = state.projects || [];
+  const active = projects.find(p => p.id === state.activeProjectId) || projects[0];
+  if(!active){ refreshProductWorkspace(); return; }
+  state.activeProjectId = active.id;
+
+  const docs = active.product_documents || [];
+  const files = (active.generated_files || []).filter(f => f.dept_id === "pm" || ["prd","sprint","phase","release"].includes(f.file_type));
+  const hasPrd     = docs.some(d => d.doc_type === "prd");
+  const hasSprint  = docs.some(d => d.doc_type === "sprint");
+  const hasPhase   = docs.some(d => d.doc_type === "phase");
+  const hasRelease = docs.some(d => d.doc_type === "release");
+  const docFile = type => files.find(f => f.file_type === type);
+
+  host.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid rgba(28,232,255,.2);background:rgba(2,12,23,.5);clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)">
+      <span style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase">Active Project:</span>
+      <select id="productProjSel" onchange="state.activeProjectId=this.value;renderProductForActive()" style="background:rgba(3,14,25,.8);border:1px solid var(--line-soft);color:#fff;padding:8px 12px;font-family:ui-monospace,monospace;font-size:12px;outline:none">
+        ${projects.map(p => `<option value="${p.id}" ${p.id===active.id?"selected":""}>${escapeHtml(p.name)} · ${p.status}</option>`).join("")}
+      </select>
+      <span style="margin-left:auto;font-family:ui-monospace,monospace;color:var(--line);font-size:11px;letter-spacing:.15em">${active.verdict||""}</span>
+    </div>
+
+    <div class="dept-card" style="cursor:default">
+      <div class="dept-num">${active.vertical||""}</div>
+      <div class="dept-name" style="font-size:16px">${escapeHtml(active.name)}</div>
+      <div class="dept-mission">${escapeHtml(active.one_line||"")}</div>
+      <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.14em">
+        Status: ${active.status} · Phase: ${active.current_phase || "pm"} · Approved ${new Date(active.created_at).toLocaleDateString()}
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">
+      ${renderGenCard("prd",     "S.C.O.P.E. · PRD",            hasPrd, docFile("prd"))}
+      ${renderGenCard("sprint",  "P.A.C.E. · Sprint Plan",      hasSprint, docFile("sprint"))}
+      ${renderGenCard("phase",   "P.A.C.E. · 90-Day Phase Map", hasPhase, docFile("phase"))}
+      ${renderGenCard("release", "S.H.I.P. · Release Checklist",hasRelease, docFile("release"))}
+    </div>
+  `;
+}
+
+function renderGenCard(type, title, has, file){
+  const colors = { prd:"var(--line)", sprint:"var(--ember)", phase:"var(--ok)", release:"var(--ember)" };
+  return `<div class="dept-card" style="cursor:default">
+    <div class="dept-name" style="font-size:12px;color:${colors[type]}">${title}</div>
+    <div class="dept-mission" style="min-height:auto;font-size:11px;margin-bottom:12px">
+      ${has ? `<span style="color:var(--ok)">✓ Generated</span>` : `<span style="color:var(--muted)">Not generated yet</span>`}
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="export-btn" onclick="generateProductDoc('${type}',this)" style="padding:8px 12px;font-size:10px;flex:1">${has?"↻ Regenerate":"▶ Generate"}</button>
+      ${file ? `<button class="export-btn" onclick="downloadFile('${file.id}')" style="padding:8px 12px;font-size:10px;flex:1">⬇ .txt</button>` : ""}
+    </div>
+  </div>`;
+}
+
+async function generateProductDoc(docType, btn){
+  const pid = state.activeProjectId;
+  if(!pid){ toast("No active project"); return; }
+  if(btn){ btn.disabled = true; btn.textContent = "Generating…"; }
+  log("SYS",`▶ Generating ${docType.toUpperCase()} for project…`,"sys");
+  try{
+    const r = await fetch("/api/product/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: pid, doc_type: docType })
+    });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || "generate failed");
+    toast(`${docType.toUpperCase()} generated · ${j.tokens||0} tokens · ${(j.elapsed_ms/1000).toFixed(1)}s`);
+    log("BOSS",`Generated ${j.file_name}`,"ok");
+    state.projects = null;
+    await refreshProductWorkspace();
+  }catch(e){
+    toast("Generation failed: " + e.message);
+    if(btn){ btn.disabled = false; btn.textContent = "▶ Generate"; }
+  }
+}
+
+function downloadFile(fileId){
+  if(!fileId) return;
+  window.open(`/api/files/download?id=${encodeURIComponent(fileId)}`, "_blank");
+}
+
+/* ---------- REPORTS LIBRARY ---------- */
+async function refreshReports(deptFilter){
+  const host = $("reportsList");
+  if(!host) return;
+  host.innerHTML = `<div class="module-placeholder"><div class="icon">↻</div><h3>Loading files…</h3></div>`;
+  try{
+    const q = deptFilter ? `?dept_id=${deptFilter}` : "";
+    const r = await fetch("/api/files/list" + q);
+    const j = await r.json();
+    const files = j.files || [];
+    if(!files.length){
+      host.innerHTML = `<div class="module-placeholder"><div class="icon">∅</div><h3>No files yet</h3><p>Generate a PRD, sprint plan, or other doc from a project's Product Workspace. Files will appear here.</p></div>`;
+      return;
+    }
+    host.innerHTML = files.map(f => {
+      const date = new Date(f.created_at).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit",hour12:true});
+      return `<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:12px;align-items:center;padding:12px 16px;border:1px solid rgba(28,232,255,.15);background:rgba(2,12,23,.5)">
+        <span style="font-family:ui-monospace,monospace;color:var(--line);font-size:10px;letter-spacing:.14em">.TXT</span>
+        <div>
+          <div style="color:#fff;font-family:ui-monospace,monospace;font-size:12px">${escapeHtml(f.file_name)}</div>
+          <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.12em;margin-top:3px">${f.dept_id||"—"} · ${f.agent_id||"—"} · ${date}</div>
+        </div>
+        <span style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.14em">${f.download_count||0} dl</span>
+        <button class="export-btn" onclick="downloadFile('${f.id}')" style="padding:8px 14px">⬇ Download</button>
+      </div>`;
+    }).join("");
+  }catch(e){
+    host.innerHTML = `<div class="module-placeholder"><div class="icon">!</div><h3>Couldn't load</h3><p>${escapeHtml(e.message)}</p></div>`;
+  }
 }
 
 /* ---------- COMMAND CENTER · DEPARTMENT HEALTH GRID ----------
