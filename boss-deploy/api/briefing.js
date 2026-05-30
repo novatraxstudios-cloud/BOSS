@@ -90,7 +90,79 @@ async function fridayScout(vertical) {
     }
   }
   flat.sort((a, b) => (b.score || 0) - (a.score || 0));
-  return { vertical: v, queries, evidence: flat.slice(0, 18) };
+  const evidence = flat.slice(0, 18);
+
+  // PRIMARY-SOURCE ENRICHMENT — pull 1-3 star App Store reviews for any
+  // apps.apple.com URLs Friday surfaced. Free, no key, public RSS feed.
+  // Treats real user complaints as gold for Sniper's competitor analysis.
+  const reviews = await enrichWithAppStoreReviews(evidence);
+
+  return { vertical: v, queries, evidence, app_store_reviews: reviews };
+}
+
+/* ---- iTunes RSS scraper (App Store review pulls) ---- */
+function extractAppStoreIds(evidence) {
+  const ids = new Set();
+  for (const e of evidence) {
+    if (!e.url) continue;
+    // Matches /id1234567890 in apps.apple.com URLs
+    const m = e.url.match(/apps\.apple\.com\/[^?]*\/id(\d{6,12})/i);
+    if (m) ids.add({ id: m[1], url: e.url, title: e.title });
+  }
+  return Array.from(ids).slice(0, 4); // cap at 4 apps to keep latency sane
+}
+
+async function fetchAppStoreReviews(appId) {
+  try {
+    const r = await fetch(
+      `https://itunes.apple.com/us/rss/customerreviews/page=1/id=${appId}/sortby=mosthelpful/json`,
+      { headers: { "User-Agent": "boss-venture-engine/1.0" } }
+    );
+    if (!r.ok) return [];
+    const j = await r.json();
+    const entries = j?.feed?.entry || [];
+    // Entry[0] is app metadata, real reviews start at index 1.
+    const reviews = [];
+    const list = Array.isArray(entries) ? entries : [entries];
+    for (let i = 1; i < list.length; i++) {
+      const e = list[i];
+      reviews.push({
+        title: e?.title?.label || "",
+        body: (e?.content?.label || "").slice(0, 400),
+        rating: parseInt(e?.["im:rating"]?.label || "0", 10),
+        version: e?.["im:version"]?.label || ""
+      });
+    }
+    return reviews;
+  } catch (e) {
+    return [];
+  }
+}
+
+async function enrichWithAppStoreReviews(evidence) {
+  const apps = extractAppStoreIds(evidence);
+  if (apps.length === 0) return [];
+
+  const reviewPacks = await Promise.all(apps.map(a => fetchAppStoreReviews(a.id)));
+  const out = [];
+  apps.forEach((a, i) => {
+    const reviews = reviewPacks[i] || [];
+    // Keep only 1-3 star reviews — pain signals — cap 6 per app
+    const negative = reviews.filter(r => r.rating > 0 && r.rating <= 3).slice(0, 6);
+    if (negative.length === 0) return;
+    out.push({
+      app_id: a.id,
+      app_title: a.title,
+      app_url: a.url,
+      negative_review_count: negative.length,
+      reviews: negative.map(r => ({
+        stars: r.rating,
+        title: r.title,
+        body: r.body
+      }))
+    });
+  });
+  return out;
 }
 
 /* =========================================================================
@@ -206,18 +278,26 @@ Output schema:
   return await callOpenAI(sys, { vertical: vertical.name, candidate });
 }
 
-/* ---- SNIPER · Competitor analysis (per candidate) ---- */
-async function agentSniper(candidate, vertical) {
+/* ---- SNIPER · Competitor analysis (per candidate) ----
+   Receives App Store 1-3 star reviews when available. Treat those as PRIMARY-SOURCE
+   pain signals - direct quotes from real disappointed customers. */
+async function agentSniper(candidate, vertical, appStoreReviews) {
   const sys = `You are S.N.I.P.E.R., the competitor and weak-execution hunter.
-Given one candidate app idea and its source URLs, identify existing competitors
-mentioned in the evidence, what users hate about them, and the market gap.
+Given a candidate app idea, source URLs, and (when available) actual App Store
+review excerpts from competitors in the same niche, identify competitors,
+what users hate about them, and the market gap.
+
+If app_store_reviews are provided, those are GOLD. Quote concrete complaints from
+the review bodies. They are primary-source competitor pain signals.
+
 Score competition_weakness 1-10 (10 = competitors are very weak).
-If entrenched well-executed players (Apple, Google, big-tech) dominate, score LOW.
+If entrenched well-executed players dominate, score LOW.
+
 ${HOUSE_RULES}
 
 Output schema:
-{"name":"","competitors":[{"name":"","weakness":""}],"poor_execution":"common review complaints","market_gap":"specific underserved wedge","differentiation":"how to win","competition_weakness":1-10,"niche_risk":"one sentence"}`;
-  return await callOpenAI(sys, { vertical: vertical.name, candidate });
+{"name":"","competitors":[{"name":"","weakness":"one-sentence summary citing a specific review or evidence point"}],"poor_execution":"the pattern across negative reviews","market_gap":"specific underserved wedge","differentiation":"how to win","competition_weakness":1-10,"niche_risk":"one sentence","review_quotes":["direct phrase from a review","another"]}`;
+  return await callOpenAI(sys, { vertical: vertical.name, candidate, app_store_reviews: appStoreReviews || [] });
 }
 
 /* ---- BOSS · Narrow (5 → 3) ----
@@ -393,10 +473,15 @@ async function generateBriefing(vertical, scoutPacket) {
   if (top5.length === 0) throw new Error("Boss filter returned zero candidates.");
 
   // 2. PARALLEL: Void + Sniper on each of the top 5
+  // Sniper gets App Store reviews when Friday surfaced apps.apple.com URLs
+  const appStoreReviews = scoutPacket.app_store_reviews || [];
+  if (appStoreReviews.length) {
+    log.push(`APP_STORE → ${appStoreReviews.reduce((s,p)=>s+p.negative_review_count,0)} negative reviews scraped from ${appStoreReviews.length} apps`);
+  }
   log.push(`VOID + SNIPER → analyzing ${top5.length} candidates in parallel`);
   const [voidResults, sniperResults] = await Promise.all([
     Promise.all(top5.map(c => agentVoid(c, vertical).catch(e => ({ data:{ name:c.name, error:e.message }})))),
-    Promise.all(top5.map(c => agentSniper(c, vertical).catch(e => ({ data:{ name:c.name, error:e.message }}))))
+    Promise.all(top5.map(c => agentSniper(c, vertical, appStoreReviews).catch(e => ({ data:{ name:c.name, error:e.message }}))))
   ]);
   const voidData = voidResults.map(r => r.data);
   const sniperData = sniperResults.map(r => r.data);
@@ -505,6 +590,8 @@ async function generateBriefing(vertical, scoutPacket) {
     vibe: vibeData
   };
   briefing.shelf_size = shelf.length;
+  briefing.app_store_reviews_scraped = appStoreReviews.length;
+  briefing.app_store_reviews = appStoreReviews;
   briefing.run_log = log;
   briefing.usage = usage;
   briefing.usage_total_tokens = Object.values(usage).reduce((s,v) => s + (typeof v === "number" ? v : (v?.total_tokens||0)), 0);
