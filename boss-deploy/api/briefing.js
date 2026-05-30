@@ -434,16 +434,13 @@ async function generateBriefing(vertical, scoutPacket) {
   const briefing = finalResp.data;
 
   // ---- DEFENSIVE POST-PROCESSING ----
-  // Even with tightened prompts, models drift. Enforce invariants in code:
-  //   (a) recompute weighted_score from the scores object
-  //   (b) snap verdict to the score band
-  //   (c) ensure kills array is populated from boss_narrow if synthesis dropped them
-  //   (d) clamp top.name + ranking names to boss_narrow.top3 names
+  // Even with tightened prompts, models drift. Enforce invariants in code so
+  // the briefing returned to Meka is internally consistent no matter what.
   try {
     const WEIGHTS = { pain_intensity:.20, willingness:.15, reachability:.15, mvp_simplicity:.15, weak_competition:.10, marketing_hook:.10, subscription:.10, founder_fit:.05 };
     const verdictFor = n => n>=8.5?"BUILD":n>=7.0?"VALIDATE":n>=5.5?"WATCH":"KILL";
 
-    // (a)+(b) honest weighted score on the top idea
+    // (a) recompute weighted_score from the scores object on the top idea
     if (briefing.top?.scores) {
       let ws = 0;
       for (const k in WEIGHTS) ws += (briefing.top.scores[k]||0) * WEIGHTS[k];
@@ -451,18 +448,46 @@ async function generateBriefing(vertical, scoutPacket) {
       briefing.top.verdict = verdictFor(ws);
     }
 
-    // (c) restore kills from boss_narrow if final synthesis dropped them
-    if (!Array.isArray(briefing.kills) || briefing.kills.length === 0) {
-      briefing.kills = narrowResp.data.kills || [];
+    // (b) AUTHORITATIVE kills — always overwrite with boss_narrow's kills,
+    // never trust BOSS_FINAL's synthesis here. BOSS_FINAL keeps mistaking
+    // ranked #2/#3 ideas as "kills" — but they're not, they're the runners-up.
+    briefing.kills = (narrowResp.data.kills || []).filter(k => k && k.name);
+
+    // (c) name stability + score/verdict reconciliation across ranking
+    if (Array.isArray(briefing.ranking) && top3.length) {
+      briefing.ranking = top3.map((src, i) => {
+        const existing = briefing.ranking[i] || {};
+        // Ranking[0] mirrors top exactly
+        if (i === 0) {
+          return {
+            rank: 1,
+            name: src.name,
+            line: src.one_line || existing.line || "",
+            score: briefing.top?.weighted_score ?? existing.score ?? 0,
+            verdict: briefing.top?.verdict ?? existing.verdict ?? "WATCH",
+            sources: existing.sources || src.sources || []
+          };
+        }
+        // For #2 and #3, snap verdict to whatever band their score lands in,
+        // and fill the line if BOSS forgot.
+        const score = Number(existing.score) || 0;
+        return {
+          rank: i + 1,
+          name: src.name,
+          line: existing.line || src.one_line || "",
+          score,
+          verdict: existing.verdict || verdictFor(score),
+          sources: existing.sources || src.sources || []
+        };
+      });
     }
 
-    // (d) name stability — force ranking + top to use boss_narrow names
-    if (Array.isArray(briefing.ranking) && top3.length) {
-      briefing.ranking = briefing.ranking.map((r, i) => ({
-        ...r,
-        name: top3[i]?.name || r.name
-      }));
-      if (briefing.top && top3[0]?.name) briefing.top.name = top3[0].name;
+    // (d) make sure top.name matches ranking[0].name
+    if (briefing.top && top3[0]?.name) briefing.top.name = top3[0].name;
+
+    // (e) populate top.sources from top3[0] if BOSS_FINAL omitted them
+    if (briefing.top && (!Array.isArray(briefing.top.sources) || briefing.top.sources.length === 0)) {
+      briefing.top.sources = top3[0]?.sources || [];
     }
   } catch(e) {
     log.push("POST_PROCESS_WARN → " + e.message);
