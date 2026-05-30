@@ -957,7 +957,10 @@
       <div class="eyebrow">B.O.S.S. verdict</div>
       <h2 id="topName">Quiet Hours</h2>
       <p id="topLine">Auto-mute specific people and apps during declared deep-work windows, then signal availability without Slack drama.</p>
-      <span class="badge" id="topVerdict">VALIDATE</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <span class="badge" id="topVerdict">VALIDATE</span>
+        <button class="approve-btn" id="topApproveBtn" type="button" onclick="approveCurrentTop(this)" style="padding:8px 14px;font-size:10px">▶ Approve for Product</button>
+      </div>
     </section>
 
     <section class="metrics">
@@ -2076,9 +2079,13 @@ function openDetail(idx){
   const isDeepDive = !!p.deep_dive_of;
   $("detailBody").innerHTML = `
     ${!isDeepDive ? `<section class="detail-section" style="border-color:rgba(255,179,77,.35);background:linear-gradient(135deg,rgba(255,179,77,.08),transparent 40%)">
-      <div class="detail-eyebrow" style="color:var(--ember)">Approval Gate</div>
-      <div style="color:var(--ink);font-size:12px;line-height:1.55;margin-bottom:10px">Send this idea through a deeper research pass. Sniper hunts 8 competitors instead of 3, Blue plans a 30-day build with weekly milestones, Vibe writes a day-by-day 7-day validation sprint, Boss issues a refreshed verdict. Takes ~45 seconds.</div>
-      <button class="approve-btn" onclick="triggerDeepDive('${b.id}',this)">▶ Approve for Deeper Research</button>
+      <div class="detail-eyebrow" style="color:var(--ember)">Decision Gate</div>
+      <div style="color:var(--ink);font-size:12px;line-height:1.55;margin-bottom:12px">Two ways forward, King Meka:</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="approve-btn" onclick="approveBriefing('${b.id}','${escapeHtml(b.top_name||"").replace(/'/g,"&#39;")}',this);" style="background:linear-gradient(90deg,var(--ok),#a8ffd7);color:#031810;border-color:var(--ok)">▶ Approve for Product Workspace</button>
+        <button class="approve-btn" onclick="triggerDeepDive('${b.id}',this)">▶ Deep Dive (more research)</button>
+      </div>
+      <div style="color:var(--dim);font-size:11px;line-height:1.5;margin-top:6px"><b style="color:var(--ok)">Approve for Product</b> spawns a project so SCOPE / PACE / SHIP can generate PRD, sprint plan, phase map, release checklist (~20 sec each).<br/><b style="color:var(--ember)">Deep Dive</b> re-runs the App Dev pipeline at higher depth before committing (~45 sec). Approve after, if it still looks good.</div>
     </section>` : `<section class="detail-section" style="border-color:rgba(77,255,194,.35)">
       <div class="detail-eyebrow" style="color:var(--ok)">Deep Dive Result</div>
       <div style="color:var(--ink);font-size:12px;line-height:1.5">This is a deep-dive briefing. Scroll for week-by-week build plan, 8-competitor sweep, and Boss's refreshed verdict.</div>
@@ -2413,6 +2420,7 @@ async function loadLiveBriefing(){
     state.liveVertical = b.vertical;
     state.liveAgentReports = b.agent_reports || null;
     state.liveUsage = b.usage_total_tokens || 0;
+    state.liveRowId = payload.row_id || null;
 
     // Mark hasRunToday if the loaded briefing is from today (UTC or local match)
     const tz = state.cfg.tz || "America/Chicago";
@@ -3122,6 +3130,34 @@ async function routeIntent(text){
     return;
   }
 
+  // Approve current top opportunity → Product Workspace
+  if(/\b(approve|approved|send to product|move to product|hand off|handoff|greenlight|green ?light|go build)\b/.test(text) && /\b(idea|top|this|opportunity|current|product|workspace)\b/.test(text)){
+    await approveCurrentTop();
+    return;
+  }
+  if(/^(approve|approve it|approve this|approve idea|approve the idea|approve top|approve current)\.?$/.test(text)){
+    await approveCurrentTop();
+    return;
+  }
+
+  // Generate a product doc by name
+  if(/\b(generate|build|write|create|produce)\b.*\b(prd|requirements|sprint plan|sprint|phase plan|phase map|phase roadmap|release checklist|release readiness|launch checklist)\b/.test(text)){
+    const docType = /\bprd|requirements\b/.test(text) ? "prd"
+                  : /\bphase\b/.test(text) ? "phase"
+                  : /\bsprint\b/.test(text) ? "sprint"
+                  : /\brelease|launch\b/.test(text) ? "release"
+                  : null;
+    if(!docType){ await say("Tell me which doc, King Meka. PRD, sprint plan, phase map, or release checklist."); return; }
+    if(!state.activeProjectId){
+      await say("No active project. Approve an idea first, or open the Product Workspace and pick one.");
+      switchModule("product");
+      return;
+    }
+    await say(`Generating the ${docType.toUpperCase()} now. About twenty seconds.`);
+    await generateProductDoc(docType);
+    return;
+  }
+
   // "What is X working on" — specific agent
   const code=detectAgent(text);
   if(code && /\b(working|doing|up to|status|on right now|on now|right now)\b/.test(text)){
@@ -3538,9 +3574,43 @@ async function approveBriefing(briefingId, name, btn){
     if(!r.ok) throw new Error(j.error || "approve failed");
     toast(`Approved: ${name}. Project created in Product Workspace.`);
     log("BOSS",`Approved ${name} → Product Workspace`,"ok");
-    // Refresh both views
     state.projects = null;
-    await refreshPipeline();
+    state.activeProjectId = j.project?.id || null;
+    // Refresh any view that might be visible
+    if(state.activeModule === "pipeline") await refreshPipeline();
+    if(state.activeModule === "product")  await refreshProductWorkspace();
+    return j.project;
+  }catch(e){
+    toast("Approval failed: " + e.message);
+    if(btn){ btn.disabled = false; btn.textContent = "▶ Approve for Product"; }
+  }
+}
+
+/* Approve "today's top opportunity" — the briefing currently rendered in Command Center.
+   Pulls the latest briefing row from /api/latest if we have it, then sends its id. */
+async function approveCurrentTop(btn){
+  if(btn){ btn.disabled = true; btn.textContent = "Approving…"; }
+  try{
+    // We loaded the latest briefing into the cockpit via /api/latest, which gave us row_id
+    // Otherwise we need to pull the most recent board row.
+    let briefingId = state.liveRowId;
+    let name = DATA.top?.name || "Top Opportunity";
+    if(!briefingId){
+      const r = await fetch("/api/board?limit=1");
+      const j = await r.json();
+      briefingId = j.board?.[0]?.id;
+      name = j.board?.[0]?.top_name || name;
+    }
+    if(!briefingId){
+      throw new Error("No briefing on record yet. Run one first.");
+    }
+    const proj = await approveBriefing(briefingId, name);
+    if(proj && btn){
+      btn.disabled = false;
+      btn.textContent = "✓ Approved · View in Product";
+      btn.onclick = () => switchModule("product");
+    }
+    await say(`Approved ${name}, King Meka. Project created in the Product Workspace. Say "generate PRD" or click in.`);
   }catch(e){
     toast("Approval failed: " + e.message);
     if(btn){ btn.disabled = false; btn.textContent = "▶ Approve for Product"; }
