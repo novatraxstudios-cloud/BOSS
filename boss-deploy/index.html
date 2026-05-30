@@ -442,6 +442,30 @@
   .verdict-chart .legend span{display:flex;align-items:center;gap:5px}
   .verdict-chart .legend i{display:inline-block;width:9px;height:9px}
 
+  /* ===== AUTH GATE ===== */
+  .auth-bg{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at center,#062236 0%,#02040b 60%,#000 100%);display:flex;align-items:center;justify-content:center;padding:24px;flex-direction:column}
+  .auth-bg.hidden{display:none}
+  .auth-bg::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(28,232,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(28,232,255,.05) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%);pointer-events:none;animation:gridDrift 22s linear infinite}
+  .auth-bg::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(28,232,255,.12) 0%,transparent 60%);pointer-events:none;animation:hangarPulse 6s ease-in-out infinite}
+  @keyframes hangarPulse{50%{transform:translate(-50%,-50%) scale(1.1);opacity:.7}}
+  .auth-card{position:relative;width:min(440px,100%);padding:36px 32px;border:1px solid var(--line);background:linear-gradient(145deg,rgba(28,232,255,.06),transparent 40%),rgba(5,18,31,.85);backdrop-filter:blur(14px);box-shadow:0 32px 100px rgba(0,0,0,.7),0 0 80px rgba(28,232,255,.18);clip-path:polygon(0 18px,18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%);text-align:center;z-index:2}
+  .auth-card .reactor-mark{margin:0 auto 18px;width:72px;height:72px;border-radius:50%;background:radial-gradient(circle,#fff 0% 14%,#9ff8ff 22% 34%,var(--line) 42% 58%,rgba(2,12,23,.7) 70% 100%);box-shadow:0 0 40px rgba(28,232,255,.7),inset 0 0 22px rgba(255,255,255,.4);position:relative}
+  .auth-card .reactor-mark::after{content:"";position:absolute;inset:-10px;border-radius:50%;border:1px dashed rgba(28,232,255,.5);animation:spin 18s linear infinite}
+  .auth-card h1{font-family:Orbitron,sans-serif;font-weight:900;font-size:22px;letter-spacing:.28em;color:#fff;margin:0 0 4px;text-transform:uppercase;text-shadow:0 0 20px rgba(28,232,255,.4)}
+  .auth-card .sub{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.25em;color:rgba(28,232,255,.6);text-transform:uppercase;margin-bottom:24px}
+  .auth-card .status{font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.16em;color:var(--dim);margin-bottom:18px;min-height:18px}
+  .auth-card .status.ok{color:var(--ok)}
+  .auth-card .status.err{color:var(--danger)}
+  .auth-input{width:100%;background:rgba(3,14,25,.8);border:1px solid rgba(28,232,255,.32);color:#fff;padding:14px 16px;font-family:ui-monospace,monospace;font-size:16px;letter-spacing:.08em;outline:none;text-align:center;margin-bottom:14px}
+  .auth-input:focus{border-color:var(--line);box-shadow:0 0 16px rgba(28,232,255,.3)}
+  .auth-input.code{letter-spacing:.5em;font-size:24px;font-weight:700}
+  .auth-btn{width:100%;padding:14px 16px;background:linear-gradient(90deg,var(--line),#79fff0);color:#031018;border:1px solid var(--line);font-family:Orbitron,sans-serif;font-weight:900;font-size:11px;letter-spacing:.22em;cursor:pointer;text-transform:uppercase;clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%);transition:all .15s}
+  .auth-btn:hover{box-shadow:0 0 22px rgba(28,232,255,.5);transform:translateY(-1px)}
+  .auth-btn:disabled{background:var(--muted);color:#021018;cursor:wait;opacity:.7}
+  .auth-secondary{margin-top:14px;background:transparent;border:none;color:rgba(28,232,255,.65);font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.18em;cursor:pointer;text-transform:uppercase;padding:6px 10px}
+  .auth-secondary:hover{color:var(--line)}
+  .auth-footer{margin-top:32px;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;text-align:center}
+
   .approve-btn{
     background:linear-gradient(90deg,var(--ember),#ffd47e);color:#1a0a00;
     border:1px solid var(--ember);font-weight:900;letter-spacing:.16em;
@@ -595,6 +619,30 @@
 </style>
 </head>
 <body>
+<!-- ===== AUTH GATE ===== -->
+<div class="auth-bg hidden" id="authBg">
+  <div class="auth-card">
+    <div class="reactor-mark"></div>
+    <h1>B.O.S.S.</h1>
+    <div class="sub">Operating System · Restricted Access</div>
+    <div class="status" id="authStatus">Enter your email to receive an access code</div>
+
+    <!-- Step 1: email -->
+    <div id="authStepEmail">
+      <input class="auth-input" id="authEmail" type="email" placeholder="email@example.com" autocomplete="email" />
+      <button class="auth-btn" id="authSendBtn" type="button" onclick="authRequestCode()">▶ Send access code</button>
+    </div>
+
+    <!-- Step 2: code -->
+    <div id="authStepCode" style="display:none">
+      <input class="auth-input code" id="authCode" type="text" inputmode="numeric" pattern="\d{6}" maxlength="6" placeholder="••••••" autocomplete="one-time-code" />
+      <button class="auth-btn" id="authVerifyBtn" type="button" onclick="authVerifyCode()">▶ Unlock</button>
+      <button class="auth-secondary" type="button" onclick="authRestart()">↺ Use a different email</button>
+    </div>
+  </div>
+  <div class="auth-footer">because ordinary systems suck · v1</div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <main class="app">
@@ -3536,7 +3584,136 @@ function toast(msg){
   toast.t=setTimeout(()=>$("toast").classList.remove("show"),2800);
 }
 
-window.addEventListener("load",boot);
+/* ===== AUTH GATE (client-side) =====
+   Token is HMAC-signed server-side. We validate expiry client-side; the
+   signature is verified by the server on protected endpoints. */
+function getAuthToken(){
+  try{ return JSON.parse(localStorage.getItem("boss.auth") || "null"); }
+  catch(e){ return null; }
+}
+function setAuthToken(t){ localStorage.setItem("boss.auth", JSON.stringify(t)); }
+function clearAuthToken(){ localStorage.removeItem("boss.auth"); }
+
+function isAuthed(){
+  const t = getAuthToken();
+  if(!t || !t.token || !t.expires_at) return false;
+  if(new Date(t.expires_at) < new Date()) return false;
+  return true;
+}
+
+function authShowGate(){
+  const el = document.getElementById("authBg");
+  if(!el) return;
+  el.classList.remove("hidden");
+  setTimeout(()=> document.getElementById("authEmail")?.focus(), 100);
+}
+function authHideGate(){
+  const el = document.getElementById("authBg");
+  if(el) el.classList.add("hidden");
+}
+
+function authSetStatus(msg, kind){
+  const el = document.getElementById("authStatus");
+  if(!el) return;
+  el.textContent = msg;
+  el.className = "status" + (kind === "ok" ? " ok" : kind === "err" ? " err" : "");
+}
+
+let _authEmailRemembered = "";
+
+async function authRequestCode(){
+  const emailEl = document.getElementById("authEmail");
+  const btn = document.getElementById("authSendBtn");
+  const email = (emailEl?.value || "").trim().toLowerCase();
+  if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+    authSetStatus("Enter a valid email.", "err"); return;
+  }
+  btn.disabled = true; btn.textContent = "Sending…";
+  authSetStatus("Sending access code…");
+  try{
+    const r = await fetch("/api/auth/request-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error || ("status "+r.status));
+    _authEmailRemembered = email;
+    document.getElementById("authStepEmail").style.display = "none";
+    document.getElementById("authStepCode").style.display  = "";
+    authSetStatus(`Code sent to ${email}. Check your inbox.`, "ok");
+    setTimeout(()=> document.getElementById("authCode")?.focus(), 100);
+  } catch(e){
+    authSetStatus("Couldn't send code: " + e.message, "err");
+  } finally {
+    btn.disabled = false; btn.textContent = "▶ Send access code";
+  }
+}
+
+async function authVerifyCode(){
+  const codeEl = document.getElementById("authCode");
+  const btn = document.getElementById("authVerifyBtn");
+  const code = (codeEl?.value || "").trim();
+  if(!/^\d{6}$/.test(code)){ authSetStatus("Code must be 6 digits.", "err"); return; }
+  btn.disabled = true; btn.textContent = "Verifying…";
+  authSetStatus("Verifying…");
+  try{
+    const r = await fetch("/api/auth/verify-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: _authEmailRemembered, code })
+    });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error || ("status "+r.status));
+    setAuthToken({ token: j.token, email: j.email, expires_at: j.expires_at });
+    authSetStatus("Unlocked. Welcome back, King Meka.", "ok");
+    setTimeout(()=>{
+      authHideGate();
+      // Boot the operating system now that auth is good
+      boot();
+    }, 600);
+  } catch(e){
+    authSetStatus("Verification failed: " + e.message, "err");
+  } finally {
+    btn.disabled = false; btn.textContent = "▶ Unlock";
+  }
+}
+
+function authRestart(){
+  document.getElementById("authStepCode").style.display = "none";
+  document.getElementById("authStepEmail").style.display = "";
+  document.getElementById("authCode").value = "";
+  document.getElementById("authEmail").value = "";
+  authSetStatus("Enter your email to receive an access code");
+  setTimeout(()=> document.getElementById("authEmail")?.focus(), 100);
+}
+
+function authSignOut(){
+  clearAuthToken();
+  location.reload();
+}
+
+// Handle Enter key in inputs
+window.addEventListener("keydown", e => {
+  if(e.key !== "Enter") return;
+  const bg = document.getElementById("authBg");
+  if(!bg || bg.classList.contains("hidden")) return;
+  if(document.activeElement?.id === "authEmail") authRequestCode();
+  else if(document.activeElement?.id === "authCode") authVerifyCode();
+});
+
+/* ===== GATED BOOT =====
+   Page loads → if already authed, run boot() normally.
+   Otherwise, show the auth gate and wait for the user. boot() runs only
+   after verify-code succeeds (called from authVerifyCode()). */
+window.addEventListener("load", () => {
+  if(isAuthed()){
+    authHideGate();
+    boot();
+  } else {
+    authShowGate();
+  }
+});
 </script>
 </body>
 </html>
