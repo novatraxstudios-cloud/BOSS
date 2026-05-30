@@ -19,7 +19,10 @@
 //
 // Manual test: hit /api/briefing?secret=<CRON_SECRET>
 
-export const config = { runtime: "edge" };
+// Node.js runtime gives us 60s on Hobby (vs 25s for Edge).
+// The 8-agent pipeline runs ~20-30s so we need the headroom.
+export const config = { runtime: "nodejs" };
+export const maxDuration = 60;
 
 /* ---------- VERTICAL ROTATION ----------
    So BOSS doesn't pitch productivity apps every single day. */
@@ -475,26 +478,25 @@ async function persistBriefing(payload){
   return { ok:true };
 }
 
-/* ---------- SECRET CHECK ---------- */
+/* ---------- SECRET CHECK (Node.js style) ---------- */
 function requireSecret(req) {
-  const url = new URL(req.url);
   const provided =
-    url.searchParams.get("secret") ||
-    req.headers.get("x-cron-secret") ||
-    (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    (req.query && req.query.secret) ||
+    req.headers["x-cron-secret"] ||
+    (req.headers["authorization"] || "").replace(/^Bearer\s+/i, "");
   const expected = process.env.CRON_SECRET;
-  if (!expected) return true;
+  if (!expected) return true; // not configured = open
   return provided === expected;
 }
 
-/* ---------- HANDLER ---------- */
-export default async function handler(req) {
+/* ---------- HANDLER (Node.js runtime) ---------- */
+export default async function handler(req, res) {
   if (!requireSecret(req)) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+    return res.status(401).json({ error: "unauthorized" });
   }
   try {
     if (!process.env.OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "OPENAI_API_KEY not set" }), { status: 500, headers: { "Content-Type": "application/json" } });
+      return res.status(500).json({ error: "OPENAI_API_KEY not set" });
     }
     const vertical = todayVertical();
     const scoutPacket = await fridayScout(vertical);
@@ -523,14 +525,8 @@ export default async function handler(req) {
       resolved_url: sbUrl() ? "found" : "MISSING",
       resolved_service_key: sbServiceKey() ? "found" : "MISSING"
     };
-    return new Response(JSON.stringify(payload, null, 2), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
+    return res.status(200).json(payload);
   } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: e.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
+    return res.status(500).json({ ok: false, error: e.message, stack: (e.stack||"").split("\n").slice(0,3).join(" | ") });
   }
 }
