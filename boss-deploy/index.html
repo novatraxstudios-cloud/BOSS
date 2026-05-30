@@ -970,6 +970,9 @@ const state={
   agentTasks:{},              // code -> current task string
   history:[],                 // rolling conversation: [{role,content}]
   lastAnswer:"",              // last thing BOSS said, for "explain that"
+  speakingText:"",            // what BOSS is currently saying (for pause/continue)
+  pausedText:"",              // text that was paused mid-sentence
+  pausedFraction:0,           // 0-1 how far through paused text BOSS got
   // Per-agent detailed state for the dossier
   agentState:{},              // code -> { status, current, progress, history:[], metrics:{} }
   openDossierCode:null,       // currently open agent dossier
@@ -1710,6 +1713,14 @@ async function loadLiveBriefing(){
     state.liveAgentReports = b.agent_reports || null;
     state.liveUsage = b.usage_total_tokens || 0;
 
+    // Mark hasRunToday if the loaded briefing is from today (UTC or local match)
+    const tz = state.cfg.tz || "America/Chicago";
+    const todayUTC   = new Date().toISOString().slice(0,10);
+    const todayLocal = new Date().toLocaleDateString("en-CA", { timeZone: tz });
+    if (b.date === todayUTC || b.date === todayLocal || payload.row_date === todayUTC || payload.row_date === todayLocal) {
+      state.hasRunToday = true;
+    }
+
     // Push the per-agent specialized outputs into each agent's dossier
     if(state.liveAgentReports){
       const r = state.liveAgentReports;
@@ -1917,6 +1928,7 @@ async function speakBriefing(){
 async function speak(text){
   if(state.speaking){toast("Already speaking.");return}
   state.speaking=true;
+  state.speakingText = text;
   setVoice("Speaking");
   startBars("speaking");
 
@@ -2166,12 +2178,31 @@ function spawnRecognizer(){
 function handleUtterance(text, recognizer){
   const wake=(state.cfg.wake||"hey boss").toLowerCase();
 
-  // While BOSS is speaking: only accept "stop" — everything else is likely
-  // the mic picking up BOSS's own audio.
+  // While BOSS is speaking: accept wake word (pause + acknowledge) OR stop commands.
+  // Wake-word interrupt remembers position so "continue" picks up where left off.
   if(state.speaking){
+    const wakeHit = text.replace(/[^a-z\s]/g," ").replace(/\s+/g," ").trim().includes(wake);
+    if(wakeHit){
+      // Capture audio position for continuation
+      if(state.audioElement && state.audioElement.duration){
+        state.pausedText = state.speakingText || "";
+        state.pausedFraction = (state.audioElement.currentTime||0) / state.audioElement.duration;
+      }
+      log("MEKA",`"${text}"`,"sys");
+      log("SYS","Wake-word during speech — pausing","sys");
+      stopSpeaking().then(()=>{
+        setTimeout(async ()=>{
+          enterCommandMode();
+          await say("Yes, King Meka?");
+        }, 250);
+      });
+      return;
+    }
     if(/\b(stop|shut up|quiet|cancel|enough)\b/.test(text)){
       log("MEKA",`"${text}"`,"sys");
       log("SYS","Interrupt received — stopping voice.","");
+      state.pausedText = "";
+      state.pausedFraction = 0;
       stopSpeaking();
     }
     return;
@@ -2185,7 +2216,8 @@ function handleUtterance(text, recognizer){
       // After the phrase, see if Meka chained a command on the same breath.
       const rest=text.split(wake).slice(1).join(wake).trim();
       enterCommandMode();
-      if(rest && hasIntent(rest)){
+      if(rest){
+        // Always route — let routeIntent decide. If nothing matches it falls through to OpenAI.
         routeIntent(rest);
       }else{
         greetAndAsk();
@@ -2251,10 +2283,53 @@ async function routeIntent(text){
     return;
   }
 
+  // Continue from paused speech (must be before stop intent and others)
+  if(/\b(continue|keep going|go on|carry on|finish (it|that)|pick up|where you left off)\b/.test(text)){
+    if(!state.pausedText){
+      await say("Nothing to continue from, King Meka.");
+      return;
+    }
+    const t = state.pausedText;
+    const startIdx = Math.floor(t.length * (state.pausedFraction||0));
+    // Snap forward to next word boundary
+    let cont = t.slice(startIdx);
+    const spaceIdx = cont.indexOf(" ");
+    if (spaceIdx > 0 && spaceIdx < cont.length - 5) cont = cont.slice(spaceIdx + 1);
+    state.pausedText = "";
+    state.pausedFraction = 0;
+    await say("Picking up. " + cont);
+    return;
+  }
+
   // Stop
   if(/\b(stop|shut up|quiet|cancel)\b/.test(text)){
     if(state.speaking) await stopSpeaking();
+    state.pausedText = "";
+    state.pausedFraction = 0;
     await say("Halted.");
+    return;
+  }
+
+  // FAST PATH: ideas board / shelf / trading / digest — match BEFORE run-briefing
+  // so "open the ideas board" doesn't get mistaken for a briefing run.
+  if(/\b(ideas board|open (the )?board|show (me )?(the )?board|venture board|the board)\b/.test(text)){
+    openBoard();
+    await say(`Opening the ideas board, King Meka. ${state.boardStats?.total||state.board?.length||"some"} briefings on file.`);
+    return;
+  }
+  if(/\b(shelf|shelved|past ideas|previous ideas|build later|on the shelf|memory|history)\b/.test(text) && !/\b(briefing|report)\b/.test(text)){
+    const shelf = state.shelf || [];
+    if(shelf.length === 0){
+      await say(`Nothing on the shelf yet, King Meka. Run a few briefings and items will start landing here.`);
+      return;
+    }
+    const validates = shelf.filter(s=>s.verdict==="VALIDATE").slice(0,4);
+    const watches   = shelf.filter(s=>s.verdict==="WATCH").slice(0,3);
+    let line = `We have ${shelf.length} ideas on the shelf, King Meka. `;
+    if(validates.length) line += `Worth validating: ${validates.map(v=>v.name).join(", ")}. `;
+    if(watches.length)   line += `On watch: ${watches.map(w=>w.name).join(", ")}. `;
+    line += `Say "tell me about" any of them and I'll pull the details.`;
+    await say(line);
     return;
   }
 
@@ -2317,12 +2392,7 @@ async function routeIntent(text){
     return;
   }
 
-  // Open the Ideas Board overlay
-  if(/\b(ideas board|open (the )?board|show (me )?(the )?board|venture board)\b/.test(text)){
-    openBoard();
-    await say(`Opening the ideas board, King Meka. ${state.boardStats?.total||state.board?.length||"some"} briefings on file.`);
-    return;
-  }
+  // (ideas board intent moved to fast path above)
 
   // Trading game plan
   if(/\b(trading|trade|game ?plan|spy|market|premarket|pre[- ]market|0dte)\b/.test(text) && /\b(plan|today|run|give me|brief|game)\b/.test(text)){
@@ -2369,26 +2439,7 @@ async function routeIntent(text){
     return;
   }
 
-  // Shelf / past ideas / "what have we looked at"
-  if(/\b(shelf|shelved|past ideas|previous ideas|what (have|did) we (looked|look) (at|into)|build later|on the shelf|the shelf|memory|history)\b/.test(text)){
-    const shelf = state.shelf || [];
-    if(shelf.length === 0){
-      await say(`Nothing on the shelf yet, King Meka. We haven't run enough briefings to build memory. Run a few daily reports and items will start landing here.`);
-      return;
-    }
-    const validates = shelf.filter(s=>s.verdict==="VALIDATE").slice(0,4);
-    const watches   = shelf.filter(s=>s.verdict==="WATCH").slice(0,3);
-    let line = `We have ${shelf.length} ideas on the shelf, King Meka. `;
-    if(validates.length){
-      line += `Worth validating: ${validates.map(v=>v.name).join(", ")}. `;
-    }
-    if(watches.length){
-      line += `On watch: ${watches.map(w=>w.name).join(", ")}. `;
-    }
-    line += `Say "tell me about" any of them and I'll pull the details.`;
-    await say(line);
-    return;
-  }
+  // (shelf intent moved to fast path above)
 
   // Recall a specific past idea by name
   if(state.shelf && state.shelf.length){
