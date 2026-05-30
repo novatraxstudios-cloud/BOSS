@@ -368,6 +368,25 @@
   .board-card .score{color:#fff;font-weight:700}
   .board-empty{padding:60px 22px;text-align:center;color:var(--muted);font-family:ui-monospace,monospace;font-size:13px;letter-spacing:.12em}
 
+  /* Verdict trend mini chart */
+  .verdict-chart{padding:0 22px 16px 22px;border-bottom:1px solid rgba(28,232,255,.12);background:rgba(2,12,23,.4)}
+  .verdict-chart .chart-label{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;padding:6px 0 8px}
+  .verdict-chart svg{display:block;width:100%;height:100px}
+  .verdict-chart .legend{display:flex;gap:14px;padding-top:8px;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.12em;color:var(--dim)}
+  .verdict-chart .legend span{display:flex;align-items:center;gap:5px}
+  .verdict-chart .legend i{display:inline-block;width:9px;height:9px}
+
+  .approve-btn{
+    background:linear-gradient(90deg,var(--ember),#ffd47e);color:#1a0a00;
+    border:1px solid var(--ember);font-weight:900;letter-spacing:.16em;
+    padding:10px 14px;font-family:ui-monospace,monospace;font-size:11px;
+    cursor:pointer;text-transform:uppercase;
+    clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%);
+    transition:all .15s;
+  }
+  .approve-btn:hover{box-shadow:0 0 20px rgba(255,179,77,.45);transform:translateY(-1px)}
+  .approve-btn:disabled{background:var(--muted);color:#1a0a00;cursor:wait;opacity:.7}
+
   /* Detail modal — re-uses dossier styles but wider */
   .detail-bg{position:fixed;inset:0;background:rgba(0,0,0,.84);backdrop-filter:blur(8px);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
   .detail-bg.open{display:flex}
@@ -580,6 +599,7 @@
         <button class="pill" data-verdict="KILL" onclick="setBoardFilter('KILL')">Kill <span class="ct" id="ctKill">0</span></button>
       </div>
     </div>
+    <div class="verdict-chart" id="verdictChart"></div>
     <div class="board-grid" id="boardGrid">
       <div class="board-empty">Loading briefings from Supabase...</div>
     </div>
@@ -1384,6 +1404,9 @@ function renderBoard(){
   $("ctKill").textContent     = state.boardStats?.kill || 0;
   $("boardSub").textContent   = `${all.length} briefings · ${state.boardStats?.build||0} BUILD · ${state.boardStats?.validate||0} VALIDATE · ${state.boardStats?.watch||0} WATCH · ${state.boardStats?.kill||0} KILL`;
 
+  // Render the verdict trend chart at the top of the board
+  renderVerdictChart(all);
+
   // Filter + search — the briefing payload is nested: payload.briefing.{top,ranking,kills,...}
   const filtered = all.filter(b => {
     if (filter !== "ALL" && (b.top_verdict||"").toUpperCase() !== filter) return false;
@@ -1444,6 +1467,85 @@ function escapeHtml(s){
   return String(s||"").replace(/[<>&"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"})[c]);
 }
 
+/* ---------- VERDICT TREND CHART (inline SVG, no library) ---------- */
+function renderVerdictChart(rows){
+  const el = $("verdictChart");
+  if(!el) return;
+  if(!rows || rows.length===0){ el.innerHTML=""; return; }
+  // Group by date over last 30 days, stack verdict counts
+  const today = new Date(); today.setHours(0,0,0,0);
+  const buckets = [];
+  for(let i=29;i>=0;i--){
+    const d = new Date(today); d.setDate(today.getDate()-i);
+    buckets.push({ date:d.toISOString().slice(0,10), BUILD:0, VALIDATE:0, WATCH:0, KILL:0 });
+  }
+  const map = new Map(buckets.map(b=>[b.date,b]));
+  for(const r of rows){
+    const b = map.get(r.date);
+    if(!b) continue;
+    const v = (r.top_verdict||"").toUpperCase();
+    if(b[v] !== undefined) b[v]++;
+  }
+  const maxTotal = Math.max(1, ...buckets.map(b=>b.BUILD+b.VALIDATE+b.WATCH+b.KILL));
+  const w = 100, h = 100, barW = w/buckets.length;
+  const colors = { BUILD:"#4dffc2", VALIDATE:"#ffb34d", WATCH:"#1ce8ff", KILL:"#ff3d67" };
+  let bars = "";
+  buckets.forEach((b,i)=>{
+    const total = b.BUILD+b.VALIDATE+b.WATCH+b.KILL;
+    if(!total) return;
+    let y = h;
+    for(const v of ["KILL","WATCH","VALIDATE","BUILD"]){
+      const segH = (b[v]/maxTotal) * h * 0.9;
+      if(segH<=0) continue;
+      y -= segH;
+      bars += `<rect x="${(i*barW)+0.4}" y="${y}" width="${barW-0.8}" height="${segH}" fill="${colors[v]}" opacity="0.85"><title>${b.date} · ${v}: ${b[v]}</title></rect>`;
+    }
+  });
+  // Today label + first label
+  el.innerHTML = `
+    <div class="chart-label">Last 30 days · ${rows.length} briefings tracked</div>
+    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${bars}</svg>
+    <div class="legend">
+      <span><i style="background:#4dffc2"></i>BUILD</span>
+      <span><i style="background:#ffb34d"></i>VALIDATE</span>
+      <span><i style="background:#1ce8ff"></i>WATCH</span>
+      <span><i style="background:#ff3d67"></i>KILL</span>
+      <span style="margin-left:auto;color:var(--muted)">← 30 days ago / today →</span>
+    </div>`;
+}
+
+/* ---------- DEEP DIVE TRIGGER ---------- */
+async function triggerDeepDive(briefingId, btn){
+  if(!briefingId){ toast("No briefing id"); return; }
+  if(btn){ btn.disabled = true; btn.textContent = "Researching… 30-60s"; }
+  toast("Deep dive started. This takes ~30-60s. Boss is hunting.");
+  try{
+    // We need a secret — try to read from cfg, otherwise ask
+    let secret = state.cfg.cronSecret || prompt("Enter your CRON_SECRET (one time, saved locally):");
+    if(secret && !state.cfg.cronSecret){
+      state.cfg.cronSecret = secret;
+      persist();
+    }
+    if(!secret){ if(btn){ btn.disabled=false; btn.textContent="▶ Approve for Deeper Research"; } return; }
+    const r = await fetch(`/api/deepdive?id=${encodeURIComponent(briefingId)}&secret=${encodeURIComponent(secret)}`);
+    const j = await r.json();
+    if(!r.ok || !j.ok){
+      toast("Deep dive failed: "+(j.error||r.status));
+      if(btn){ btn.disabled=false; btn.textContent="▶ Approve for Deeper Research"; }
+      return;
+    }
+    toast(`Deep dive complete · refreshed verdict: ${j.refreshed_verdict} (${Number(j.refreshed_score||0).toFixed(1)}/10)`);
+    log("BOSS",`Deep dive on ${j.idea} → ${j.refreshed_verdict} (${j.refreshed_score})`,"ok");
+    // Reload board so the new deep-dive row appears
+    state.board = null;
+    await loadBoard();
+    if(btn){ btn.disabled=false; btn.textContent="✓ Done — Reload to See"; }
+  }catch(e){
+    toast("Deep dive error: "+e.message);
+    if(btn){ btn.disabled=false; btn.textContent="▶ Approve for Deeper Research"; }
+  }
+}
+
 /* ---------- DETAIL MODAL ---------- */
 function openDetail(idx){
   const b = (state.boardFiltered || state.board)[idx];
@@ -1468,7 +1570,17 @@ function openDetail(idx){
   const vibe = (ar.vibe||[]).find(c=>c.name===top.name) || (ar.vibe||[])[0] || {};
   const sniper = (ar.sniper||[]).find(c=>c.name===top.name) || (ar.sniper||[])[0] || {};
 
+  const isDeepDive = !!p.deep_dive_of;
   $("detailBody").innerHTML = `
+    ${!isDeepDive ? `<section class="detail-section" style="border-color:rgba(255,179,77,.35);background:linear-gradient(135deg,rgba(255,179,77,.08),transparent 40%)">
+      <div class="detail-eyebrow" style="color:var(--ember)">Approval Gate</div>
+      <div style="color:var(--ink);font-size:12px;line-height:1.55;margin-bottom:10px">Send this idea through a deeper research pass. Sniper hunts 8 competitors instead of 3, Blue plans a 30-day build with weekly milestones, Vibe writes a day-by-day 7-day validation sprint, Boss issues a refreshed verdict. Takes ~45 seconds.</div>
+      <button class="approve-btn" onclick="triggerDeepDive('${b.id}',this)">▶ Approve for Deeper Research</button>
+    </section>` : `<section class="detail-section" style="border-color:rgba(77,255,194,.35)">
+      <div class="detail-eyebrow" style="color:var(--ok)">Deep Dive Result</div>
+      <div style="color:var(--ink);font-size:12px;line-height:1.5">This is a deep-dive briefing. Scroll for week-by-week build plan, 8-competitor sweep, and Boss's refreshed verdict.</div>
+    </section>`}
+
     <section class="detail-section">
       <div class="detail-eyebrow">Executive Summary</div>
       <div style="color:var(--ink);line-height:1.55;font-size:13px">${escapeHtml(execSummary || "—")}</div>
@@ -2209,6 +2321,51 @@ async function routeIntent(text){
   if(/\b(ideas board|open (the )?board|show (me )?(the )?board|venture board)\b/.test(text)){
     openBoard();
     await say(`Opening the ideas board, King Meka. ${state.boardStats?.total||state.board?.length||"some"} briefings on file.`);
+    return;
+  }
+
+  // Trading game plan
+  if(/\b(trading|trade|game ?plan|spy|market|premarket|pre[- ]market|0dte)\b/.test(text) && /\b(plan|today|run|give me|brief|game)\b/.test(text)){
+    if(!state.cfg.cronSecret){
+      await say("I need your cron secret to run the trading desk, King Meka. Configure it once in settings.");
+      return;
+    }
+    await say("Pulling today's trading game plan, King Meka. Checking premarket and overnight catalysts. Stand by.");
+    try{
+      const r = await fetch(`/api/trading?secret=${encodeURIComponent(state.cfg.cronSecret)}`);
+      const j = await r.json();
+      if(!r.ok || !j.ok){ await say("Trading desk error: "+(j.error||r.status)); return; }
+      const plan = j.plan || {};
+      const setups = (plan.setups||[]).filter(s=>s.verdict==="HUNT");
+      let line = `Today is ${plan.verdict_today||"YELLOW"}. ${plan.market_context} `;
+      if(setups.length){
+        line += `Strongest setup: ${setups[0].ticker} ${setups[0].direction}, ${setups[0].setup_type}. Entry ${setups[0].entry_zone}, stop ${setups[0].stop_loss}. `;
+      } else {
+        line += `No clean HUNT setups today. ${(plan.setups||[]).length} on watch. `;
+      }
+      line += `Kill switch: ${plan.kill_switch||"stop after two losses"}. Email is in your inbox.`;
+      await say(line);
+    }catch(e){ await say("Trading error: "+e.message); }
+    return;
+  }
+
+  // Weekly digest
+  if(/\b(weekly|week digest|week recap|past week|this week.*digest|digest)\b/.test(text)){
+    if(!state.cfg.cronSecret){
+      await say("Need your cron secret for the weekly digest, King Meka. Save it in settings once.");
+      return;
+    }
+    await say("Synthesizing the week, King Meka. Stand by.");
+    try{
+      const r = await fetch(`/api/digest?secret=${encodeURIComponent(state.cfg.cronSecret)}`);
+      const j = await r.json();
+      if(!r.ok || !j.ok){ await say("Digest error: "+(j.error||r.status)); return; }
+      const d = j.digest||{};
+      let line = `${d.week_of||"This week"}. ${d.executive_summary} `;
+      if(d.best_of_week?.name){ line += `Best of week: ${d.best_of_week.name}. ${d.best_of_week.why}. `; }
+      line += `Email is on its way.`;
+      await say(line);
+    }catch(e){ await say("Digest error: "+e.message); }
     return;
   }
 
