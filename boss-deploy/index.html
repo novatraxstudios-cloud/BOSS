@@ -54,7 +54,7 @@
   button,input,select{font:inherit}
   button{cursor:pointer}
 
-  .app{position:relative;z-index:2;min-height:100vh;padding:18px;display:grid;grid-template-columns:86px minmax(0,1fr) 350px;gap:16px}
+  .app{position:relative;z-index:2;min-height:100vh;padding:18px;display:grid;grid-template-columns:236px minmax(0,1fr) 350px;gap:16px}
   .rail,.stage,.dossier,.card,.drawer{
     border:1px solid var(--line-soft);
     background:linear-gradient(145deg,rgba(28,232,255,.07),transparent 32%),var(--glass);
@@ -74,7 +74,73 @@
   }
   .rail,.stage,.dossier,.card{clip-path:polygon(0 14px,14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%)}
 
-  .rail{min-height:calc(100vh - 36px);padding:12px 9px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .rail{min-height:calc(100vh - 36px);padding:14px 12px;display:flex;flex-direction:column;align-items:stretch;gap:6px}
+
+  /* ===== OPERATING SYSTEM SIDEBAR ===== */
+  .rail .os-header{display:flex;align-items:center;gap:10px;padding:4px 6px 14px;border-bottom:1px solid rgba(28,232,255,.14);margin-bottom:10px}
+  .rail .os-header .reactor-mark{width:36px;height:36px;flex-shrink:0}
+  .rail .os-header .os-title{font-family:Orbitron,sans-serif;font-weight:900;font-size:13px;letter-spacing:.22em;color:#fff;line-height:1.1}
+  .rail .os-header .os-sub{font-family:ui-monospace,monospace;font-size:8px;letter-spacing:.18em;color:var(--muted);margin-top:3px;text-transform:uppercase}
+
+  .nav-item{
+    display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:center;
+    padding:10px 12px;border:1px solid transparent;background:transparent;color:var(--ink);
+    cursor:pointer;text-align:left;transition:all .12s;
+    clip-path:polygon(0 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%);
+    width:100%;
+  }
+  .nav-item:hover{border-color:rgba(28,232,255,.25);background:rgba(28,232,255,.04)}
+  .nav-item.active{border-color:var(--ember);background:linear-gradient(90deg,rgba(255,179,77,.1),transparent 70%);box-shadow:0 0 18px rgba(255,179,77,.15)}
+  .nav-item .nav-num{font-family:ui-monospace,monospace;color:var(--line);font-size:10px;letter-spacing:.1em;text-align:center}
+  .nav-item.active .nav-num{color:var(--ember)}
+  .nav-item .nav-lbl{font-family:Orbitron,sans-serif;font-size:10px;letter-spacing:.16em;color:var(--ink);text-transform:uppercase}
+  .nav-item.active .nav-lbl{color:#fff}
+  .nav-item .nav-sub{font-family:ui-monospace,monospace;font-size:8px;color:var(--muted);letter-spacing:.12em;margin-top:2px;text-transform:uppercase}
+  .nav-divider{height:1px;background:rgba(28,232,255,.14);margin:6px 4px}
+
+  .os-footer{margin-top:auto;padding:12px 6px 4px;border-top:1px solid rgba(28,232,255,.14);font-family:ui-monospace,monospace;font-size:9px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;line-height:1.6}
+  .os-footer b{color:var(--line);display:block;font-size:11px}
+
+  /* ===== MODULE ROUTING ===== */
+  /* Command Center wraps the existing top + nexus + command-row in display:contents
+     so they continue to participate in the .stage grid. Hiding it cuts everything. */
+  .cmd-module{display:contents}
+  .cmd-module.hidden{display:none}
+  /* Other modules overlay the entire stage area when active. */
+  .module-stage{display:none;grid-column:1/-1;grid-row:1/-1;flex-direction:column;gap:14px;overflow-y:auto;padding-right:4px}
+  .module-stage.active{display:flex}
+  .module-hero{padding:24px 28px;border:1px solid rgba(28,232,255,.22);background:linear-gradient(145deg,rgba(28,232,255,.05),transparent 40%),rgba(5,18,31,.55);clip-path:polygon(0 14px,14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%)}
+  .module-hero .kicker{font-family:ui-monospace,monospace;color:var(--line);font-size:11px;letter-spacing:.25em;text-transform:uppercase}
+  .module-hero h1{margin:6px 0 8px;font-family:Orbitron,sans-serif;font-weight:900;font-size:36px;color:#fff;letter-spacing:.1em;text-transform:uppercase;text-shadow:0 0 22px rgba(28,232,255,.3)}
+  .module-hero p{margin:0;color:var(--dim);font-size:13px;line-height:1.7;max-width:760px;font-weight:300}
+
+  /* Command Center department grid */
+  .dept-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .dept-card{padding:18px;border:1px solid rgba(28,232,255,.18);background:linear-gradient(135deg,rgba(28,232,255,.05),rgba(5,18,31,.6));clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%);cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+  .dept-card:hover{border-color:var(--line);box-shadow:0 0 22px rgba(28,232,255,.2);transform:translateY(-2px)}
+  .dept-card .dept-num{position:absolute;top:14px;right:14px;font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.18em}
+  .dept-card .dept-name{font-family:Orbitron,sans-serif;font-weight:700;font-size:13px;letter-spacing:.16em;color:#fff;text-transform:uppercase;margin-bottom:10px}
+  .dept-card .dept-mission{color:var(--dim);font-size:12px;line-height:1.55;font-weight:300;margin-bottom:14px;min-height:50px}
+  .dept-card .dept-agents{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+  .dept-card .dept-agent{font-family:ui-monospace,monospace;font-size:9px;letter-spacing:.12em;color:var(--line);border:1px solid rgba(28,232,255,.25);padding:2px 7px}
+  .dept-card .dept-status{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px dashed rgba(28,232,255,.12);font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.14em;color:var(--muted)}
+  .dept-card .dept-status .live{color:var(--ok)}
+  .dept-card .dept-status .standby{color:rgba(28,232,255,.55)}
+  .dept-card.exec{border-color:rgba(255,179,77,.32)}
+  .dept-card.exec .dept-name{color:var(--ember)}
+
+  /* Module placeholder content */
+  .module-placeholder{padding:60px 32px;text-align:center;border:1px dashed rgba(28,232,255,.2);background:rgba(2,12,23,.4)}
+  .module-placeholder .icon{font-family:ui-monospace,monospace;color:rgba(28,232,255,.4);font-size:48px;letter-spacing:.1em;margin-bottom:14px}
+  .module-placeholder h3{font-family:Orbitron;font-size:15px;color:#fff;letter-spacing:.2em;margin:0 0 10px;text-transform:uppercase}
+  .module-placeholder p{color:var(--dim);font-size:12px;line-height:1.7;font-weight:300;max-width:520px;margin:0 auto}
+  .module-placeholder .phase-note{margin-top:18px;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.18em;color:var(--ember);text-transform:uppercase}
+
+  /* Export buttons row */
+  .export-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px}
+  .export-btn{padding:11px 14px;border:1px solid rgba(28,232,255,.25);background:rgba(3,14,25,.6);color:var(--ink);font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;clip-path:polygon(0 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%);transition:all .15s;text-align:left;display:flex;align-items:center;gap:8px}
+  .export-btn:hover{border-color:var(--line);box-shadow:0 0 14px rgba(28,232,255,.2)}
+  .export-btn .arrow{margin-left:auto;color:var(--line)}
   .reactor-mark{width:56px;height:56px;border-radius:50%;position:relative;display:grid;place-items:center;background:conic-gradient(from 0deg,var(--line),transparent 18%,var(--ember),transparent 42%,var(--line),transparent 70%,var(--ok));box-shadow:0 0 28px rgba(28,232,255,.8);animation:markSpin 8s linear infinite}
   .reactor-mark::before{content:"";width:36px;height:36px;border-radius:50%;background:radial-gradient(circle,#fff 0 24%,var(--line) 25% 52%,#063349 53% 100%);box-shadow:inset 0 0 10px #fff}
   .rail-button{width:58px;height:58px;border:1px solid rgba(28,232,255,.22);background:rgba(3,14,25,.76);color:var(--ink);display:grid;place-items:center;gap:2px;text-transform:uppercase;font-size:10px;letter-spacing:.12em;clip-path:polygon(0 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%);transition:all .15s}
@@ -532,19 +598,76 @@
 <div class="toast" id="toast"></div>
 
 <main class="app">
-  <aside class="rail" aria-label="B.O.S.S. navigation">
-    <div class="reactor-mark" title="B.O.S.S. core"></div>
-    <button class="rail-button active" type="button" data-target="core"><b>01</b>Core</button>
-    <button class="rail-button" type="button" data-target="scan"><b>02</b>Scan</button>
-    <button class="rail-button" type="button" data-target="kill"><b>03</b>Kill</button>
-    <button class="rail-button" type="button" data-target="mail"><b>04</b>Mail</button>
-    <button class="rail-button" type="button" onclick="openBoard()" title="Ideas Board"><b>05</b>Board</button>
-    <button class="rail-button" type="button" onclick="openOrg()" title="Org Chart"><b>06</b>Org</button>
-    <div class="rail-spacer"></div>
-    <div class="rail-meter" title="Signal integrity"><div id="meterFill" style="position:absolute;left:0;right:0;bottom:0;height:68%;background:linear-gradient(180deg,var(--line),var(--ok));box-shadow:0 0 16px var(--line);transition:height .4s"></div></div>
+  <aside class="rail" aria-label="B.O.S.S. Operating System navigation">
+    <div class="os-header">
+      <div class="reactor-mark" title="B.O.S.S. core"></div>
+      <div>
+        <div class="os-title">B.O.S.S.</div>
+        <div class="os-sub">Operating System v1</div>
+      </div>
+    </div>
+
+    <button class="nav-item active" type="button" data-module="command" onclick="switchModule('command')">
+      <span class="nav-num">01</span>
+      <span><span class="nav-lbl">Command Center</span><span class="nav-sub">Daily briefing</span></span>
+    </button>
+    <button class="nav-item" type="button" data-module="pipeline" onclick="switchModule('pipeline')">
+      <span class="nav-num">02</span>
+      <span><span class="nav-lbl">App Pipeline</span><span class="nav-sub">Idea discovery</span></span>
+    </button>
+    <button class="nav-item" type="button" data-module="product" onclick="switchModule('product')">
+      <span class="nav-num">03</span>
+      <span><span class="nav-lbl">Product</span><span class="nav-sub">PRD · sprints</span></span>
+    </button>
+    <button class="nav-item" type="button" data-module="design" onclick="switchModule('design')">
+      <span class="nav-num">04</span>
+      <span><span class="nav-lbl">Design & UX</span><span class="nav-sub">Flows · visual</span></span>
+    </button>
+    <button class="nav-item" type="button" data-module="marketing" onclick="switchModule('marketing')">
+      <span class="nav-num">05</span>
+      <span><span class="nav-lbl">Marketing</span><span class="nav-sub">Launch · growth</span></span>
+    </button>
+    <button class="nav-item" type="button" data-module="security" onclick="switchModule('security')">
+      <span class="nav-num">06</span>
+      <span><span class="nav-lbl">Security</span><span class="nav-sub">7am report</span></span>
+    </button>
+    <button class="nav-item" type="button" data-module="trading" onclick="switchModule('trading')">
+      <span class="nav-num">07</span>
+      <span><span class="nav-lbl">Trading</span><span class="nav-sub">Watchlist</span></span>
+    </button>
+    <button class="nav-item" type="button" data-module="tron" onclick="switchModule('tron')">
+      <span class="nav-num">08</span>
+      <span><span class="nav-lbl">TRON Ops</span><span class="nav-sub">Telemetry</span></span>
+    </button>
+
+    <div class="nav-divider"></div>
+
+    <button class="nav-item" type="button" onclick="openBoard()" title="Ideas Board">
+      <span class="nav-num">▦</span>
+      <span><span class="nav-lbl">Ideas Board</span><span class="nav-sub">All briefings</span></span>
+    </button>
+    <button class="nav-item" type="button" onclick="openOrg()" title="Org Chart">
+      <span class="nav-num">◇</span>
+      <span><span class="nav-lbl">Org Chart</span><span class="nav-sub">26 agents</span></span>
+    </button>
+    <button class="nav-item" type="button" data-module="reports" onclick="switchModule('reports')">
+      <span class="nav-num">▼</span>
+      <span><span class="nav-lbl">Reports</span><span class="nav-sub">.txt library</span></span>
+    </button>
+    <button class="nav-item" type="button" data-module="settings" onclick="switchModule('settings')">
+      <span class="nav-num">⚙</span>
+      <span><span class="nav-lbl">Settings</span><span class="nav-sub">Config</span></span>
+    </button>
+
+    <div class="os-footer">
+      <b>26 AGENTS</b>
+      8 DEPARTMENTS<br/>ONLINE
+    </div>
   </aside>
 
-  <section class="stage" id="stage">
+  <section class="stage" id="stage" data-active-module="command">
+    <!-- ===== Command Center (default active) — wraps the existing cockpit ===== -->
+    <div class="cmd-module" id="cmdModule">
     <header class="top" id="core">
       <div>
         <div class="brand-kicker">MekaOps autonomous venture intelligence</div>
@@ -603,6 +726,199 @@
       <button class="command" id="listenBtn" type="button" onclick="toggleListening()"><span>Wake word</span><b id="listenLabel">Arm listener</b></button>
       <button class="command" type="button" onclick="openSettings()"><span>System</span><b>Configure</b></button>
     </footer>
+    </div><!-- /.cmd-module -->
+
+    <!-- ===== App Pipeline ===== -->
+    <section class="module-stage" data-module="pipeline" id="modPipeline">
+      <div class="module-hero">
+        <div class="kicker">Module 02 · App Development Intelligence</div>
+        <h1>App Pipeline</h1>
+        <p>Track every app idea from raw signal to BUILD, VALIDATE, WATCH, or KILL. Kanban + scorecard views. The pipeline feeds Friday's scouting into Boss's verdict funnel, then approved ideas hand off to Product Management. Phase 1 shows the structural shell. Phase 5 wires the live workflow.</p>
+      </div>
+      <div class="export-row">
+        <button class="export-btn" onclick="openBoard()">View Ideas Board <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="runBriefing()">Run New Briefing <span class="arrow">▸</span></button>
+        <button class="export-btn">Approve for Product <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Pipeline Report .txt <span class="arrow">▸</span></button>
+      </div>
+      <div class="module-placeholder">
+        <div class="icon">◆ ◆ ◆</div>
+        <h3>Kanban View Coming Online</h3>
+        <p>Columns for Raw Signal, Researching, Validating, Approved for Product, Watching, Killed, Building. Each idea card surfaces pain score, monetization score, MVP complexity, verdict, and agent owner.</p>
+        <div class="phase-note">Phase 1 · Visual Shell · Phase 5 wires the live data model</div>
+      </div>
+    </section>
+
+    <!-- ===== Product Workspace ===== -->
+    <section class="module-stage" data-module="product" id="modProduct">
+      <div class="module-hero">
+        <div class="kicker">Module 03 · Product Management Team</div>
+        <h1>Product Workspace</h1>
+        <p>P.A.C.E. plans sprints. S.C.O.P.E. owns the PRD, user stories, acceptance criteria. S.H.I.P. drives release readiness. Approved ideas land here first and stay until they ship. Every artifact exports as .txt for handoff to Claude or Codex.</p>
+      </div>
+      <div class="export-row">
+        <button class="export-btn">Export PRD .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Sprint Plan .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Phase Plan .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Build Walkthrough .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Claude/Codex Prompt .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Full 10-File Build Packet <span class="arrow">▸</span></button>
+      </div>
+      <div class="module-placeholder">
+        <div class="icon">P ▸ S ▸ S</div>
+        <h3>P.A.C.E. · S.C.O.P.E. · S.H.I.P.</h3>
+        <p>Approved-app selector at top. Then panels: PRD, scope (in / out), user stories, acceptance criteria, sprint plan, phase roadmap, release checklist, ship/no-ship recommendation.</p>
+        <div class="phase-note">Phase 5 · Product Management workflow</div>
+      </div>
+    </section>
+
+    <!-- ===== Design & UX ===== -->
+    <section class="module-stage" data-module="design" id="modDesign">
+      <div class="module-hero">
+        <div class="kicker">Module 04 · Design & UX Team</div>
+        <h1>Design & UX</h1>
+        <p>F.O.R.M. structures UX flows. L.E.N.S. owns visual direction and prevents generic AI app look. V.I.E.W. defines the component system. Design always reads from Product Management's PRD first, never guesses.</p>
+      </div>
+      <div class="export-row">
+        <button class="export-btn">Export UI/UX Plan .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Screen Flow .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Component System .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Visual Direction .txt <span class="arrow">▸</span></button>
+      </div>
+      <div class="module-placeholder">
+        <div class="icon">F ▸ L ▸ V</div>
+        <h3>F.O.R.M. · L.E.N.S. · V.I.E.W.</h3>
+        <p>User flow map, screen inventory, navigation model, onboarding flow, visual direction (colors / type / spacing), component library, UI critique, app store screenshot direction. Quality scored on clarity, premium feel, differentiation, ease of use, mobile readiness, consistency.</p>
+        <div class="phase-note">Phase 6 · Design & UX workflow</div>
+      </div>
+    </section>
+
+    <!-- ===== Marketing & Growth ===== -->
+    <section class="module-stage" data-module="marketing" id="modMarketing">
+      <div class="module-hero">
+        <div class="kicker">Module 05 · Marketing & Growth Team</div>
+        <h1>Marketing & Growth</h1>
+        <p>H.A.L.O. positions. A.U.R.A. acquires and retains. E.C.H.O. owns community engagement. D.A.S.H. measures conversion. Runs AFTER Product Management and Design so messaging stays anchored to actual scope. No public posts, ads, or DMs without your approval.</p>
+      </div>
+      <div class="export-row">
+        <button class="export-btn">Export Marketing Plan .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export UGC Scripts .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Community Posts .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export App Store Listing .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export 30-Day Launch Calendar .txt <span class="arrow">▸</span></button>
+      </div>
+      <div class="module-placeholder">
+        <div class="icon">H ▸ A ▸ E ▸ D</div>
+        <h3>H.A.L.O. · A.U.R.A. · E.C.H.O. · D.A.S.H.</h3>
+        <p>Positioning, customer avatar, one-liner, launch offer, landing page copy, UGC script library, community plan with approval gates, 30-day launch calendar, analytics plan with KPIs and kill criteria.</p>
+        <div class="phase-note">Phase 7 · Marketing & Growth workflow</div>
+      </div>
+    </section>
+
+    <!-- ===== Security Center ===== -->
+    <section class="module-stage" data-module="security" id="modSecurity">
+      <div class="module-hero">
+        <div class="kicker">Module 06 · Security & Reliability Team</div>
+        <h1>Security Center</h1>
+        <p>V.A.U.L.T. monitors auth and access. H.A.W.K. detects anomalies. M.A.C.E. owns incident response. Always-on. Generates a Security & Reliability Report every morning at 7:00 AM CT that lands in your inbox AND inside the 8:00 AM B.O.S.S. briefing.</p>
+      </div>
+      <div class="export-row">
+        <button class="export-btn">Run Security Report Now <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Security Report .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Incident Log .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Risk Register .txt <span class="arrow">▸</span></button>
+      </div>
+      <div class="module-placeholder">
+        <div class="icon">V ▸ H ▸ M</div>
+        <h3>7:00 AM Security Report</h3>
+        <p>Auth status, failed login summary, API anomalies, cost spikes, cron health, agent failures, database + email + dashboard health, suspicious activity, open vulnerabilities, urgent fixes, GREEN / YELLOW / RED verdict.</p>
+        <div class="phase-note">Phase 8 · Security workflow + 7am cron</div>
+      </div>
+    </section>
+
+    <!-- ===== Trading Watchlist ===== -->
+    <section class="module-stage" data-module="trading" id="modTrading">
+      <div class="module-hero">
+        <div class="kicker">Module 07 · Trading, Stocks, Investment Team</div>
+        <h1>Trading Watchlist</h1>
+        <p>P.I.V.O.T. reads premarket. A.T.O.M. handles options context. Q.U.A.N.T. owns multi-timeframe structure. E.D.G.E. enforces discipline. Configurable watchlist (add / remove / pause / categorize / prioritize). Educational analysis only — no trade execution, no guarantees, no financial advice.</p>
+      </div>
+      <div class="export-row">
+        <button class="export-btn">Generate Watchlist Report <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Watchlist Report .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Per-Ticker Report .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Manage Tickers <span class="arrow">▸</span></button>
+      </div>
+      <div class="module-placeholder">
+        <div class="icon">SPY · QQQ · NVDA</div>
+        <h3>Configurable Watchlist · Educational Only</h3>
+        <p>Ticker table with symbol, name, category, priority, active, options enabled, earnings watch, notes, last report. Categories: Core, Options, Earnings, Momentum, Long-Term, Avoid / Choppy, High Risk. Trading reports include market context, key levels, setup quality, risk notes, invalidation levels, and discipline reminders.</p>
+        <div class="phase-note">Phase 9 · Trading watchlist workflow + 8:15am cron</div>
+      </div>
+    </section>
+
+    <!-- ===== TRON Ops ===== -->
+    <section class="module-stage" data-module="tron" id="modTron">
+      <div class="module-hero">
+        <div class="kicker">Module 08 · Ops Commander</div>
+        <h1>T.R.O.N. Operations</h1>
+        <p>System-wide ops backbone. Tracks every agent run, every department's completion status, every failed job, API spend, cron health, .txt export status, security escalations, trading report delivery. Compiles the 7:00 AM Security Report from V.A.U.L.T. / H.A.W.K. / M.A.C.E. and feeds B.O.S.S.</p>
+      </div>
+      <div class="export-row">
+        <button class="export-btn">Export Ops Summary .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Agent Run Log .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Failed Jobs Report .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Export API Cost Report .txt <span class="arrow">▸</span></button>
+      </div>
+      <div class="module-placeholder">
+        <div class="icon">▰ ▰ ▰</div>
+        <h3>Agent Run Matrix</h3>
+        <p>Live matrix of all 26 agents × scheduled runs × manual runs × failures × outputs generated. Cost meter, latency meter, retry queue, escalation log.</p>
+        <div class="phase-note">Phase 10 · Scheduling + ops monitoring</div>
+      </div>
+    </section>
+
+    <!-- ===== Reports Library ===== -->
+    <section class="module-stage" data-module="reports" id="modReports">
+      <div class="module-hero">
+        <div class="kicker">Module 09 · Reports & Exports</div>
+        <h1>Reports Library</h1>
+        <p>Central place to search, filter, and download every .txt file the system has generated. Filter by date, department, project, report type, or agent. Bundle into full build packets. Regenerate stale reports. Mark approved.</p>
+      </div>
+      <div class="export-row">
+        <button class="export-btn">Full Build Packet (10 files) <span class="arrow">▸</span></button>
+        <button class="export-btn">Filter by Department <span class="arrow">▸</span></button>
+        <button class="export-btn">Filter by Project <span class="arrow">▸</span></button>
+        <button class="export-btn">Filter by Date <span class="arrow">▸</span></button>
+      </div>
+      <div class="module-placeholder">
+        <div class="icon">.txt × .txt × .txt</div>
+        <h3>20+ Report Types Tracked</h3>
+        <p>MVP spec, PRD, sprint plan, UI/UX plan, marketing plan, security report, trading watchlist, step-by-step walkthrough, Claude/Codex prompt, risk register, launch checklist, morning briefing, weekly digest, app store listing, UGC scripts, community plan, bug report, incident report, ops summary, agent run log.</p>
+        <div class="phase-note">Phase 4 · TXT export engine</div>
+      </div>
+    </section>
+
+    <!-- ===== Settings ===== -->
+    <section class="module-stage" data-module="settings" id="modSettings">
+      <div class="module-hero">
+        <div class="kicker">Module 10 · System Configuration</div>
+        <h1>Settings</h1>
+        <p>Profile, report email, timezone, schedule overrides for the 7am security and 8am briefing crons, API usage caps, agent enable/disable toggles, default trading watchlist, export preferences, approval-gate thresholds. The Configure drawer in the footer still works for voice + key config.</p>
+      </div>
+      <div class="export-row">
+        <button class="export-btn" onclick="openSettings()">Open Configuration Drawer <span class="arrow">▸</span></button>
+        <button class="export-btn">Export Settings Snapshot .txt <span class="arrow">▸</span></button>
+        <button class="export-btn">Restore Defaults <span class="arrow">▸</span></button>
+        <button class="export-btn">Approval Gate Thresholds <span class="arrow">▸</span></button>
+      </div>
+      <div class="module-placeholder">
+        <div class="icon">⚙ ⚙ ⚙</div>
+        <h3>System Configuration</h3>
+        <p>Full settings module with per-department toggles, scheduled report controls, watchlist defaults, and export preferences. Phase 1 surfaces the existing voice/key drawer; the full settings module comes online when departments wire up.</p>
+        <div class="phase-note">Phase 2 · Per-department toggle UI</div>
+      </div>
+    </section>
   </section>
 
   <aside class="dossier">
@@ -789,6 +1105,8 @@
    audio analyser, op-card pipeline, weighted scoring, verdict logic)
    ===================================================================== */
 
+// Phase 1 agent list — kept compact for the App-Dev cockpit pipeline.
+// The full 26-agent roster lives in ALL_AGENTS below for the org chart + Command Center.
 const AGENTS=[
   ["BOSS","B.O.S.S.","Chief decision agent"],
   ["FRDY","F.R.I.D.A.Y.","Opportunity scout"],
@@ -798,6 +1116,66 @@ const AGENTS=[
   ["VIBE","V.I.B.E.","Validation tests"],
   ["CASH","C.A.S.H.","Pricing and LTV"],
   ["TRON","T.R.O.N.","Runtime telemetry"]
+];
+
+/* ===== B.O.S.S. OPERATING SYSTEM · FULL ROSTER (Phase 1) ===== */
+const DEPARTMENTS = [
+  { id:"exec", num:"00", name:"Command",                          mission:"Final executive decision and morning command briefing.", color:"ember" },
+  { id:"ops",  num:"08", name:"Ops Commander",                    mission:"System-wide telemetry, schedules, escalations.", color:"cyan" },
+  { id:"app",  num:"01", name:"App Development Intelligence",     mission:"Find pain, validate demand, define ugly MVPs.", color:"cyan" },
+  { id:"pm",   num:"02", name:"Product Management",               mission:"Turn approved ideas into PRDs, sprints, build packets.", color:"cyan" },
+  { id:"ux",   num:"03", name:"Design & UX",                      mission:"Premium flows, visual direction, component system.", color:"cyan" },
+  { id:"mkt",  num:"04", name:"Marketing & Growth",               mission:"Positioning, UGC, community, launch and analytics.", color:"cyan" },
+  { id:"sec",  num:"05", name:"Security & Reliability",           mission:"Always-on. 7am report. Auth, anomaly, mitigation.", color:"cyan" },
+  { id:"trd",  num:"06", name:"Trading, Stocks, Investment",      mission:"Configurable watchlist. Educational analysis only.", color:"cyan" }
+];
+
+const ALL_AGENTS = [
+  // Command + Ops
+  { code:"BOSS",  dotted:"B.O.S.S.",     spoken:"Boss",   role:"Chief Command",         dept:"exec" },
+  { code:"TRON",  dotted:"T.R.O.N.",     spoken:"Tron",   role:"Ops Commander",         dept:"ops" },
+  // App Development Intelligence
+  { code:"FRDY",  dotted:"F.R.I.D.A.Y.", spoken:"Friday", role:"Opportunity Scout",     dept:"app" },
+  { code:"SNPR",  dotted:"S.N.I.P.E.R.", spoken:"Sniper", role:"Competitor Hunter",     dept:"app" },
+  { code:"BLUE",  dotted:"B.L.U.E.",     spoken:"Blue",   role:"MVP Architect",         dept:"app" },
+  { code:"VOID",  dotted:"V.O.I.D.",     spoken:"Void",   role:"Demand Validator",      dept:"app" },
+  { code:"VIBE",  dotted:"V.I.B.E.",     spoken:"Vibe",   role:"Validation Tests",      dept:"app" },
+  { code:"CASH",  dotted:"C.A.S.H.",     spoken:"Cash",   role:"Pricing & LTV",         dept:"app" },
+  // Product Management
+  { code:"PACE",  dotted:"P.A.C.E.",     spoken:"Pace",   role:"Sprint Planning",       dept:"pm" },
+  { code:"SCOPE", dotted:"S.C.O.P.E.",   spoken:"Scope",  role:"PRD & Requirements",    dept:"pm" },
+  { code:"SHIP",  dotted:"S.H.I.P.",     spoken:"Ship",   role:"Release Readiness",     dept:"pm" },
+  // Design & UX
+  { code:"FORM",  dotted:"F.O.R.M.",     spoken:"Form",   role:"UX Flow & Structure",   dept:"ux" },
+  { code:"LENS",  dotted:"L.E.N.S.",     spoken:"Lens",   role:"Visual Direction",      dept:"ux" },
+  { code:"VIEW",  dotted:"V.I.E.W.",     spoken:"View",   role:"Components & Widgets",  dept:"ux" },
+  // Marketing & Growth
+  { code:"HALO",  dotted:"H.A.L.O.",     spoken:"Halo",   role:"Brand & Positioning",   dept:"mkt" },
+  { code:"AURA",  dotted:"A.U.R.A.",     spoken:"Aura",   role:"Acquisition & Retention", dept:"mkt" },
+  { code:"ECHO",  dotted:"E.C.H.O.",     spoken:"Echo",   role:"Community & Social",    dept:"mkt" },
+  { code:"DASH",  dotted:"D.A.S.H.",     spoken:"Dash",   role:"Analytics & Conversion", dept:"mkt" },
+  // Security & Reliability
+  { code:"VAULT", dotted:"V.A.U.L.T.",   spoken:"Vault",  role:"Auth & Access",         dept:"sec" },
+  { code:"HAWK",  dotted:"H.A.W.K.",     spoken:"Hawk",   role:"Anomaly Detection",     dept:"sec" },
+  { code:"MACE",  dotted:"M.A.C.E.",     spoken:"Mace",   role:"Incident Mitigation",   dept:"sec" },
+  // Trading
+  { code:"PIVOT", dotted:"P.I.V.O.T.",   spoken:"Pivot",  role:"Premarket Structure",   dept:"trd" },
+  { code:"ATOM",  dotted:"A.T.O.M.",     spoken:"Atom",   role:"Options Context",       dept:"trd" },
+  { code:"QUANT", dotted:"Q.U.A.N.T.",   spoken:"Quant",  role:"Multi-Timeframe",       dept:"trd" },
+  { code:"EDGE",  dotted:"E.D.G.E.",     spoken:"Edge",   role:"Trading Discipline",    dept:"trd" }
+];
+
+const MODULES = [
+  { id:"command",   label:"Command Center", num:"01" },
+  { id:"pipeline",  label:"App Pipeline",   num:"02" },
+  { id:"product",   label:"Product",        num:"03" },
+  { id:"design",    label:"Design & UX",    num:"04" },
+  { id:"marketing", label:"Marketing",      num:"05" },
+  { id:"security",  label:"Security",       num:"06" },
+  { id:"trading",   label:"Trading",        num:"07" },
+  { id:"tron",      label:"TRON Ops",       num:"08" },
+  { id:"reports",   label:"Reports",        num:"09" },
+  { id:"settings",  label:"Settings",       num:"10" }
 ];
 
 // Weighting from the spec
@@ -1117,9 +1495,10 @@ function boot(){
   tick();
   setInterval(tick,1000);
   setInterval(scheduleCheck,15000);
-  log("SYS","Command nexus online.","sys");
+  log("SYS","B.O.S.S. Operating System v1 online.","sys");
   log("TRON","Voice ID pre-loaded: "+state.cfg.voice,"");
-  log("TRON","Awaiting morning research cycle.","");
+  log("TRON","26 agents · 8 departments · 10 modules · standing by.","");
+  renderDeptGrid();
   if(!state.cfg.key){
     toast("Tap Configure → paste your ElevenLabs key, then Arm listener.");
   }else{
@@ -1765,51 +2144,91 @@ function closeOrg(){
 }
 
 function renderOrgChart(){
-  // Node positions in the SVG coordinate space (viewBox 0 0 1000 700)
+  // ===== 26-agent org chart laid out in department columns =====
+  // viewBox 0 0 1200 1080. BOSS at top, departments fan out below, TRON to the right.
   const NODES = [
-    { code:"BOSS",  spoken:"Boss",    role:"Chief Decision",  x:500, y: 80, r:46, primary:true },
-    { code:"TRON",  spoken:"Tron",    role:"Telemetry",       x:880, y:200, r:36 },
-    { code:"FRDY",  spoken:"Friday",  role:"Opportunity Scout", x:500, y:220, r:38 },
-    { code:"VOID",  spoken:"Void",    role:"Demand Validator",  x:330, y:360, r:36 },
-    { code:"SNPR",  spoken:"Sniper",  role:"Competitor Hunter", x:670, y:360, r:36 },
-    { code:"BLUE",  spoken:"Blue",    role:"MVP Architect",     x:220, y:500, r:34 },
-    { code:"CASH",  spoken:"Cash",    role:"Pricing & LTV",     x:500, y:500, r:34 },
-    { code:"VIBE",  spoken:"Vibe",    role:"Validation Tests",  x:780, y:500, r:34 },
-    { code:"BOSSv", spoken:"Boss",    role:"Final Verdict",     x:500, y:640, r:42, primary:true, mirror:"BOSS" }
+    // BOSS at top center
+    { code:"BOSS",  spoken:"Boss",   role:"Chief Command",          x:600, y: 90, r:50, primary:true },
+    // TRON to the right monitoring all
+    { code:"TRON",  spoken:"Tron",   role:"Ops Commander",          x:1080,y: 90, r:42, primary:true },
+
+    // ---- ROW 1: App Development Intelligence (6 agents) ----
+    { code:"FRDY",  spoken:"Friday", role:"Opportunity Scout",      x:150, y:260, r:34, dept:"app" },
+    { code:"SNPR",  spoken:"Sniper", role:"Competitor Hunter",      x:300, y:260, r:34, dept:"app" },
+    { code:"BLUE",  spoken:"Blue",   role:"MVP Architect",          x:450, y:260, r:34, dept:"app" },
+    { code:"VOID",  spoken:"Void",   role:"Demand Validator",       x:600, y:260, r:34, dept:"app" },
+    { code:"VIBE",  spoken:"Vibe",   role:"Validation Tests",       x:750, y:260, r:34, dept:"app" },
+    { code:"CASH",  spoken:"Cash",   role:"Pricing & LTV",          x:900, y:260, r:34, dept:"app" },
+
+    // ---- ROW 2: Product Management (3) + Design & UX (3) ----
+    { code:"PACE",  spoken:"Pace",   role:"Sprint Planning",        x:180, y:450, r:32, dept:"pm" },
+    { code:"SCOPE", spoken:"Scope",  role:"PRD & Requirements",     x:330, y:450, r:32, dept:"pm" },
+    { code:"SHIP",  spoken:"Ship",   role:"Release Readiness",      x:480, y:450, r:32, dept:"pm" },
+    { code:"FORM",  spoken:"Form",   role:"UX Flow",                x:660, y:450, r:32, dept:"ux" },
+    { code:"LENS",  spoken:"Lens",   role:"Visual Direction",       x:810, y:450, r:32, dept:"ux" },
+    { code:"VIEW",  spoken:"View",   role:"Components",             x:960, y:450, r:32, dept:"ux" },
+
+    // ---- ROW 3: Marketing & Growth (4) ----
+    { code:"HALO",  spoken:"Halo",   role:"Brand & Positioning",    x:300, y:640, r:32, dept:"mkt" },
+    { code:"AURA",  spoken:"Aura",   role:"Acquisition & Retention",x:450, y:640, r:32, dept:"mkt" },
+    { code:"ECHO",  spoken:"Echo",   role:"Community",              x:600, y:640, r:32, dept:"mkt" },
+    { code:"DASH",  spoken:"Dash",   role:"Analytics",              x:750, y:640, r:32, dept:"mkt" },
+
+    // ---- ROW 4: Security (3) + Trading (4) ----
+    { code:"VAULT", spoken:"Vault",  role:"Auth & Access",          x:180, y:830, r:32, dept:"sec" },
+    { code:"HAWK",  spoken:"Hawk",   role:"Anomaly Detection",      x:330, y:830, r:32, dept:"sec" },
+    { code:"MACE",  spoken:"Mace",   role:"Incident Mitigation",    x:480, y:830, r:32, dept:"sec" },
+    { code:"PIVOT", spoken:"Pivot",  role:"Premarket Structure",    x:660, y:830, r:32, dept:"trd" },
+    { code:"ATOM",  spoken:"Atom",   role:"Options Context",        x:810, y:830, r:32, dept:"trd" },
+    { code:"QUANT", spoken:"Quant",  role:"Multi-Timeframe",        x:960, y:830, r:32, dept:"trd" },
+    { code:"EDGE",  spoken:"Edge",   role:"Trading Discipline",     x:1100,y:830, r:32, dept:"trd" }
   ];
 
-  // Pipeline connections (data flow). BOSS_top → FRIDAY → VOID+SNIPER → BLUE+CASH+VIBE → BOSS_bottom
+  // Connections: BOSS spawns work to each department. TRON monitors all.
   const CONNS = [
-    ["BOSS","FRDY","gold"],
-    ["FRDY","VOID",""],
+    // BOSS → each department's lead (the first agent in row)
+    ["BOSS","FRDY","gold"],   // App Dev kickoff
+    ["BOSS","PACE","gold"],   // Product handoff
+    ["BOSS","FORM","gold"],   // Design handoff
+    ["BOSS","HALO","gold"],   // Marketing handoff
+    ["BOSS","VAULT","gold"],  // Security oversight
+    ["BOSS","PIVOT","gold"],  // Trading oversight
+    // Internal department flow lines (App Dev pipeline)
     ["FRDY","SNPR",""],
-    ["VOID","BLUE",""],
-    ["VOID","CASH",""],
-    ["SNPR","CASH",""],
-    ["SNPR","VIBE",""],
-    ["BLUE","BOSSv","green"],
-    ["CASH","BOSSv","green"],
-    ["VIBE","BOSSv","green"],
-    // TRON monitoring lines (thin dotted)
+    ["SNPR","BLUE",""],
+    ["BLUE","VOID",""],
+    ["VOID","VIBE",""],
+    ["VIBE","CASH",""],
+    // Product internal
+    ["PACE","SCOPE",""],
+    ["SCOPE","SHIP",""],
+    // UX internal
+    ["FORM","LENS",""],
+    ["LENS","VIEW",""],
+    // Marketing internal
+    ["HALO","AURA",""],
+    ["AURA","ECHO",""],
+    ["ECHO","DASH",""],
+    // Security internal
+    ["VAULT","HAWK",""],
+    ["HAWK","MACE",""],
+    // Trading internal
+    ["PIVOT","ATOM",""],
+    ["ATOM","QUANT",""],
+    ["QUANT","EDGE",""],
+    // TRON monitoring (thin dotted to a representative from each dept)
     ["TRON","BOSS","tron"],
-    ["TRON","FRDY","tron"],
-    ["TRON","VOID","tron"],
-    ["TRON","SNPR","tron"],
-    ["TRON","BLUE","tron"],
     ["TRON","CASH","tron"],
-    ["TRON","VIBE","tron"],
-    ["TRON","BOSSv","tron"]
+    ["TRON","SHIP","tron"],
+    ["TRON","VIEW","tron"],
+    ["TRON","DASH","tron"],
+    ["TRON","MACE","tron"],
+    ["TRON","EDGE","tron"]
   ];
 
   const findNode = code => NODES.find(n => n.code === code);
-  const stateFor = code => {
-    const real = code === "BOSSv" ? "BOSS" : code;
-    return state.agentState?.[real]?.status || "IDLE";
-  };
-  const taskFor = code => {
-    const real = code === "BOSSv" ? "BOSS" : code;
-    return state.agentTasks?.[real] || state.agentState?.[real]?.current || "standing by";
-  };
+  const stateFor = code => state.agentState?.[code]?.status || "IDLE";
+  const taskFor  = code => state.agentTasks?.[code] || state.agentState?.[code]?.current || "standing by";
   const escAttr = s => String(s||"").replace(/"/g,"&quot;");
 
   // Build paths
@@ -1835,33 +2254,33 @@ function renderOrgChart(){
   for(const n of NODES){
     const status = stateFor(n.code);
     const cls = (status === "ACTIVE" ? "active" : status === "DONE" ? "done" : "") + (n.primary ? " boss" : "");
-    nodeSvg += `<g class="org-node ${cls}" onclick="closeOrg();setTimeout(()=>openDossier('${n.code==='BOSSv'?'BOSS':n.code}'),120)" data-code="${n.code}">
+    nodeSvg += `<g class="org-node ${cls}" onclick="closeOrg();setTimeout(()=>openDossier('${n.code}'),120)" data-code="${n.code}">
       <circle class="ring" cx="${n.x}" cy="${n.y}" r="${n.r+10}"/>
       <circle class="ring" cx="${n.x}" cy="${n.y}" r="${n.r+4}" stroke-dasharray="3 4"/>
       <circle class="core" cx="${n.x}" cy="${n.y}" r="${n.r}"/>
-      <text class="code" x="${n.x}" y="${n.y}">${n.code.replace("v","")}</text>
+      <text class="code" x="${n.x}" y="${n.y}">${n.code}</text>
       <text class="name" x="${n.x}" y="${n.y + n.r + 18}">${n.spoken.toUpperCase()}</text>
       <text class="role" x="${n.x}" y="${n.y + n.r + 32}">${n.role.toUpperCase()}</text>
       <title>${escAttr(n.spoken)} — ${escAttr(n.role)}\n${escAttr(taskFor(n.code))}</title>
     </g>`;
   }
 
-  // Phase brackets / labels at the left
+  // Phase brackets — one per department row
   const phaseSvg = `
-    <line class="phase-bracket" x1="60" y1="60"  x2="60" y2="160"/>
-    <text class="phase-label" x="50" y="110" transform="rotate(-90 50 110)">DISPATCH</text>
-    <line class="phase-bracket" x1="60" y1="180" x2="60" y2="290"/>
-    <text class="phase-label" x="50" y="240" transform="rotate(-90 50 240)">SCOUT</text>
-    <line class="phase-bracket" x1="60" y1="310" x2="60" y2="420"/>
-    <text class="phase-label" x="50" y="370" transform="rotate(-90 50 370)">ANALYZE</text>
-    <line class="phase-bracket" x1="60" y1="440" x2="60" y2="560"/>
-    <text class="phase-label" x="50" y="500" transform="rotate(-90 50 500)">ENGINEER</text>
-    <line class="phase-bracket" x1="60" y1="580" x2="60" y2="690"/>
-    <text class="phase-label" x="50" y="640" transform="rotate(-90 50 640)">VERDICT</text>
+    <line class="phase-bracket" x1="40" y1="50"  x2="40" y2="160"/>
+    <text class="phase-label" x="30" y="110" transform="rotate(-90 30 110)">COMMAND</text>
+    <line class="phase-bracket" x1="40" y1="200" x2="40" y2="340"/>
+    <text class="phase-label" x="30" y="270" transform="rotate(-90 30 270)">APP DEV</text>
+    <line class="phase-bracket" x1="40" y1="380" x2="40" y2="530"/>
+    <text class="phase-label" x="30" y="455" transform="rotate(-90 30 455)">PRODUCT · UX</text>
+    <line class="phase-bracket" x1="40" y1="570" x2="40" y2="720"/>
+    <text class="phase-label" x="30" y="645" transform="rotate(-90 30 645)">MARKETING</text>
+    <line class="phase-bracket" x1="40" y1="760" x2="40" y2="910"/>
+    <text class="phase-label" x="30" y="835" transform="rotate(-90 30 835)">SECURITY · TRADING</text>
   `;
 
   $("orgCanvas").innerHTML = `
-    <svg class="org-svg" viewBox="0 0 1000 720" preserveAspectRatio="xMidYMid meet">
+    <svg class="org-svg" viewBox="0 0 1200 970" preserveAspectRatio="xMidYMid meet" style="min-height:680px">
       <defs>
         <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="3.5" result="blur"/>
@@ -1884,7 +2303,7 @@ function renderOrgChart(){
       ${nodeSvg}
 
       <!-- caption at top -->
-      <text x="500" y="30" class="phase-label" text-anchor="middle" fill="#1ce8ff" style="letter-spacing:.4em;font-size:11px">DAILY PIPELINE · TOP TO BOTTOM</text>
+      <text x="600" y="28" class="phase-label" text-anchor="middle" fill="#1ce8ff" style="letter-spacing:.4em;font-size:11px">B.O.S.S. OPERATING SYSTEM · 26 AGENTS · 8 DEPARTMENTS</text>
     </svg>
   `;
 }
@@ -2601,8 +3020,32 @@ async function routeIntent(text){
   if(/\b(org chart|org ?chart|team chart|agent chart|topology|pipeline (chart|map|view)|show (me )?(the )?team|the team|org map)\b/.test(text)){
     log("SYS","▶ Org Chart intent matched.","sys");
     await openOrg();
-    await say(`Opening the org chart, King Meka. Eight agents online, four phases. Click any node for the dossier.`);
+    await say(`Opening the org chart, King Meka. Twenty six agents across eight departments. Click any node for the dossier.`);
     return;
+  }
+
+  // Module navigation — "go to product workspace" / "take me to marketing"
+  const navMap = [
+    { re: /\b(command center|home|main|dashboard|main screen)\b/, id:"command", say:"Back to Command Center, King Meka." },
+    { re: /\b(app pipeline|pipeline|opportunity pipeline|kanban)\b/, id:"pipeline", say:"App Pipeline up." },
+    { re: /\b(product (workspace|management|module|page)?|p[rd][rd])\b/, id:"product", say:"Product workspace." },
+    { re: /\b(design|ux|design and ux|user experience)\b/, id:"design", say:"Design and UX module." },
+    { re: /\b(marketing|growth|marketing.* growth|marketing module)\b/, id:"marketing", say:"Marketing and Growth module." },
+    { re: /\b(security (center|module|page)?|security and reliability)\b/, id:"security", say:"Security Center." },
+    { re: /\b(trading (center|module|watchlist)?|stocks module|investment module|tickers)\b/, id:"trading", say:"Trading Watchlist." },
+    { re: /\b(tron ops|tron module|operations center|ops center|telemetry module)\b/, id:"tron", say:"Tron Operations." },
+    { re: /\b(reports? library|reports? module|exports? library|text library|file library)\b/, id:"reports", say:"Reports Library." },
+    { re: /\b(settings module|settings page|configuration module|configure module)\b/, id:"settings", say:"Settings module." }
+  ];
+  if(/\b(go to|open|take me to|switch to|show me|navigate to|jump to)\b/.test(text)){
+    for(const nav of navMap){
+      if(nav.re.test(text)){
+        log("SYS",`▶ Module nav · ${nav.id}.`,"sys");
+        switchModule(nav.id);
+        await say(nav.say);
+        return;
+      }
+    }
   }
 
   // FAST PATH: ideas board / shelf / trading / digest — match BEFORE run-briefing
@@ -2969,17 +3412,79 @@ function scheduleCheck(){
   if(now.getHours()===0 && now.getMinutes()===0) state.hasRunToday=false;
 }
 
-/* ---------- RAIL NAV ---------- */
+/* ---------- RAIL NAV (legacy — sidebar now uses switchModule) ---------- */
 function wireRail(){
-  document.querySelectorAll(".rail-button").forEach(b=>{
-    b.addEventListener("click",()=>{
-      document.querySelectorAll(".rail-button").forEach(x=>x.classList.remove("active"));
-      b.classList.add("active");
-      const target=b.dataset.target;
-      const el=document.getElementById(target);
-      if(el) el.scrollIntoView({behavior:"smooth",block:"start"});
-    });
+  // Old narrow rail buttons are gone; switchModule() handles nav now.
+}
+
+/* ---------- OS MODULE ROUTING ---------- */
+function switchModule(id){
+  if(!id) id = "command";
+  state.activeModule = id;
+  // Toggle sidebar active state
+  document.querySelectorAll(".nav-item").forEach(b=>{
+    b.classList.toggle("active", b.dataset.module === id);
   });
+  // Toggle command vs other modules
+  const cmd = $("cmdModule");
+  if(cmd){
+    if(id === "command"){ cmd.classList.remove("hidden"); }
+    else { cmd.classList.add("hidden"); }
+  }
+  document.querySelectorAll(".module-stage").forEach(s=>{
+    s.classList.toggle("active", s.dataset.module === id);
+  });
+  // Repaint Command Center if we just landed there
+  if(id === "command"){ renderDeptGrid(); }
+  // Stage attribute for any CSS that wants to react
+  const stage = $("stage");
+  if(stage) stage.dataset.activeModule = id;
+  log("SYS",`▶ Module: ${id.toUpperCase()}.`,"sys");
+}
+
+/* ---------- COMMAND CENTER · DEPARTMENT HEALTH GRID ----------
+   Renders 8 department cards on top of the existing cockpit so Command Center
+   shows the full OS at a glance. Cards are inserted as the FIRST child of the
+   command-row footer area so they sit naturally with the briefing UI. */
+function renderDeptGrid(){
+  // Only do this once — re-render is idempotent via id
+  let host = $("deptGrid");
+  if(!host){
+    const stage = $("stage");
+    const top = stage?.querySelector(".top");
+    if(!stage || !top) return;
+    host = document.createElement("div");
+    host.id = "deptGrid";
+    host.style.gridColumn = "1 / -1";
+    host.style.marginTop = "8px";
+    // Insert after .top
+    top.parentNode.insertBefore(host, top.nextSibling);
+  }
+  host.innerHTML = `
+    <div class="dept-grid">
+      ${DEPARTMENTS.map(d => {
+        const agents = ALL_AGENTS.filter(a => a.dept === d.id);
+        const cls = d.id === "exec" ? "exec" : "";
+        return `<div class="dept-card ${cls}" onclick="openDeptDetail('${d.id}')">
+          <div class="dept-num">${d.num}</div>
+          <div class="dept-name">${d.name}</div>
+          <div class="dept-mission">${d.mission}</div>
+          <div class="dept-agents">
+            ${agents.map(a => `<span class="dept-agent" title="${a.dotted} · ${a.role}">${a.code}</span>`).join("")}
+          </div>
+          <div class="dept-status">
+            <span class="live">● ONLINE</span>
+            <span>${agents.length} ${agents.length===1?"agent":"agents"}</span>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+  `;
+}
+
+function openDeptDetail(deptId){
+  const map = { app:"command", pm:"product", ux:"design", mkt:"marketing", sec:"security", trd:"trading", ops:"tron", exec:"command" };
+  switchModule(map[deptId] || "command");
 }
 
 /* ---------- SETTINGS ---------- */
