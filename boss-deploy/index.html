@@ -1230,6 +1230,75 @@ async function loadLiveBriefing(){
     state.lastSources = (payload.sources||[]).map(s=>s.url);
     state.liveBriefingDate = b.date;
     state.liveVertical = b.vertical;
+    state.liveAgentReports = b.agent_reports || null;
+    state.liveUsage = b.usage_total_tokens || 0;
+
+    // Push the per-agent specialized outputs into each agent's dossier
+    if(state.liveAgentReports){
+      const r = state.liveAgentReports;
+      if(state.agentState.FRDY){
+        state.agentState.FRDY.current = `Scouted ${r.friday?.sources_scouted||0} live sources from ${r.friday?.queries_run||0} queries.`;
+        state.agentState.FRDY.metrics.sources_scouted = r.friday?.sources_scouted || 0;
+        state.agentState.FRDY.metrics.queries_run = r.friday?.queries_run || 0;
+        state.agentState.FRDY.metrics.complaint_clusters = (r.boss_filter?.top5||[]).length;
+      }
+      if(state.agentState.VOID && Array.isArray(r.void)){
+        const top = r.void[0]||{};
+        state.agentState.VOID.current = `Validated demand for ${r.void.length} candidates. Top: ${top.name||"—"}. Urgency ${top.urgency||"—"}, frequency ${top.frequency||"—"}, willingness ${top.willingness||"—"}.`;
+        state.agentState.VOID.metrics.demand_signals = r.void.length;
+        state.agentState.VOID.metrics.urgency_avg = (r.void.reduce((s,x)=>s+(x.urgency||0),0)/r.void.length).toFixed(1);
+        state.agentState.VOID.metrics.wtp_clues = r.void.reduce((s,x)=>s+(x.willingness>=7?1:0),0);
+      }
+      if(state.agentState.SNPR && Array.isArray(r.sniper)){
+        const top = r.sniper[0]||{};
+        const competitors = (top.competitors||[]).length;
+        state.agentState.SNPR.current = `Audited competitors across ${r.sniper.length} candidates. Top market gap: ${top.market_gap||"—"}.`;
+        state.agentState.SNPR.metrics.competitors_analyzed = r.sniper.reduce((s,x)=>s+((x.competitors||[]).length),0);
+        state.agentState.SNPR.metrics.weakness_flags = r.sniper.filter(x=>x.competition_weakness>=7).length;
+        state.agentState.SNPR.metrics.market_gaps = r.sniper.filter(x=>x.market_gap).length;
+      }
+      if(state.agentState.BLUE && Array.isArray(r.blue)){
+        const top = r.blue[0]||{};
+        state.agentState.BLUE.current = `Defined ugly MVP scope for ${r.blue.length} finalists. Top: ${top.name||"—"} (${top.complexity||"—"}).`;
+        state.agentState.BLUE.metrics.mvp_screens = (top.screens||[]).length;
+        state.agentState.BLUE.metrics.apis_required = (top.apis||[]).length;
+        state.agentState.BLUE.metrics.complexity = top.complexity || "—";
+      }
+      if(state.agentState.CASH && Array.isArray(r.cash)){
+        const top = r.cash[0]||{};
+        state.agentState.CASH.current = `Priced ${r.cash.length} finalists. Top: ${top.name||"—"} at ${(top.pricing_tiers||[]).map(t=>t.price).join(" / ")||"—"}.`;
+        state.agentState.CASH.metrics.pricing_tiers = (top.pricing_tiers||[]).length;
+        state.agentState.CASH.metrics.ltv_models = r.cash.length;
+        state.agentState.CASH.metrics.revenue_upside = top.revenue_upside || "—";
+      }
+      if(state.agentState.VIBE && Array.isArray(r.vibe)){
+        const top = r.vibe[0]||{};
+        state.agentState.VIBE.current = `Drafted 7-day validation plans for ${r.vibe.length} finalists. Headline for top: "${top.landing_headline||"—"}".`;
+        state.agentState.VIBE.metrics.hooks_generated = (top.tiktok_hooks||[]).length + (top.reddit_posts||[]).length;
+        state.agentState.VIBE.metrics.tests_designed = r.vibe.length;
+        state.agentState.VIBE.metrics.kill_criteria = r.vibe.filter(v=>v.kill_criteria).length;
+      }
+      if(state.agentState.BOSS){
+        state.agentState.BOSS.current = `Final verdict synthesized. Top: ${DATA.top.name} (${DATA.top.verdict}, ${(weightedScore(DATA.top.scores)).toFixed(1)}/10).`;
+        state.agentState.BOSS.metrics.verdicts_today = 3;
+        state.agentState.BOSS.metrics.ideas_killed = (DATA.kills||[]).length + ((r.boss_narrow?.kills)||[]).length;
+        state.agentState.BOSS.metrics.top_score = weightedScore(DATA.top.scores).toFixed(1);
+      }
+      if(state.agentState.TRON){
+        state.agentState.TRON.current = `Pipeline complete. ${state.liveUsage} tokens used across 7 specialist calls.`;
+        state.agentState.TRON.metrics.runs_today = 1;
+        state.agentState.TRON.metrics.api_cost = "$" + ((state.liveUsage/1e6)*0.15).toFixed(3);
+        state.agentState.TRON.metrics.errors = 0;
+      }
+      // Mark all agents as DONE since the live briefing represents completed work
+      AGENTS.forEach(a=>{
+        if(state.agentState[a[0]]){
+          state.agentState[a[0]].status = "DONE";
+          state.agentState[a[0]].progress = 100;
+        }
+      });
+      if(state.openDossierCode) renderDossier(state.openDossierCode);
+    }
 
     // Repaint the right-side panels with fresh data
     $("topName").textContent  = DATA.top.name || "";
