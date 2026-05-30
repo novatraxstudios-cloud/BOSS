@@ -4,12 +4,27 @@
 
 export const config = { runtime: "edge" };
 
+function kvUrl(){
+  return process.env.KV_REST_API_URL
+      || process.env.UPSTASH_REDIS_REST_URL
+      || process.env.REDIS_REST_API_URL
+      || process.env.STORAGE_REST_API_URL
+      || null;
+}
+function kvToken(){
+  return process.env.KV_REST_API_TOKEN
+      || process.env.UPSTASH_REDIS_REST_TOKEN
+      || process.env.REDIS_REST_API_TOKEN
+      || process.env.STORAGE_REST_API_TOKEN
+      || null;
+}
 async function kvCmd(cmd) {
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return null;
-  const res = await fetch(process.env.KV_REST_API_URL, {
+  const url=kvUrl(), token=kvToken();
+  if (!url || !token) return null;
+  const res = await fetch(url, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.KV_REST_API_TOKEN}`,
+      "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify(cmd)
@@ -21,11 +36,17 @@ async function kvCmd(cmd) {
 
 export default async function handler() {
   try {
-    if (!process.env.KV_REST_API_URL) {
+    if (!kvUrl()) {
       return json({
         ok: false,
         reason: "KV not configured. Add Vercel KV via Storage tab. See WALKTHROUGH-KV.md.",
-        hasLive: false
+        hasLive: false,
+        debug_env: {
+          has_kv_url: !!process.env.KV_REST_API_URL,
+          has_upstash_url: !!process.env.UPSTASH_REDIS_REST_URL,
+          has_redis_url: !!process.env.REDIS_REST_API_URL,
+          has_storage_url: !!process.env.STORAGE_REST_API_URL
+        }
       }, 200);
     }
     const raw = await kvCmd(["GET", "briefing:latest"]);
