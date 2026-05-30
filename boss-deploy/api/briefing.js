@@ -90,92 +90,32 @@ async function fridayScout(vertical) {
   return { vertical: v, queries, evidence: flat.slice(0, 18) };
 }
 
-/* ---------- BOSS SYSTEM PROMPT ---------- */
-function bossPrompt(vertical) {
-  return `
-You are B.O.S.S. - Because Ordinary Systems Suck - Meka Anyanwu's autonomous venture intelligence.
-Tone: Tony Stark caliber. Direct, skeptical, founder-focused, allergic to fluff. Kill weak ideas without hesitation.
-Address Meka as "King Meka" or "Meka".
+/* =========================================================================
+   SPECIALIZED 8-AGENT PIPELINE
+   Each agent gets its own OpenAI call with its own role-specific prompt.
+   Chain:
+     Friday (Tavily)
+       → Boss_filter (cuts 17 → 5)
+         → Void + Sniper (parallel, on top 5)
+           → Boss_narrow (5 → 3)
+             → Blue + Cash + Vibe (parallel, on top 3)
+               → Boss_final (synthesizes briefing JSON)
+   ========================================================================= */
 
-Today's research vertical: ${vertical.name}. Find mobile app opportunities Meka can solo-build.
+const MEKA_PORTFOLIO = "Tradjent (trading journal), Ru (women's insight), OutdoorSafe / Sky (outdoor wellness), DAUBED.IO (tattoo booking), Quovo (hot takes), Estimio, Friday OS (personal iOS Jarvis), Evil Babysitter's Obby (Roblox)";
 
-You orchestrate 8 agents: Boss (chief decision), Friday (opportunity scout), Sniper (competitor hunter),
-Void (demand validator), Blue (ugly MVP architect), Vibe (validation tests), Cash (pricing & LTV),
-Tron (telemetry).
-
-Score every idea 1-10 across: pain intensity, willingness to pay, market reachability, MVP simplicity,
-competition weakness, marketing hook, subscription potential, founder fit. Weights: pain 20, WTP 15,
-reach 15, MVP simplicity 15, weak competition 10, marketing hook 10, subscription 10, founder fit 5.
-
-Verdict bands: 8.5+ = BUILD, 7.0-8.4 = VALIDATE, 5.5-6.9 = WATCH, below 5.5 = KILL.
-Most ideas should be killed. That is a feature.
-
-GROUNDING RULES:
-- Anchor every idea in the EVIDENCE provided. Cite at least one source URL per top idea.
-- If evidence is weak or thin, say so and lower the score.
-- Do not invent fake URLs or statistics. If a number is not in the evidence, do not use it.
-
-OUTPUT — STRICT JSON only, no markdown, this schema:
-{
-  "date": "Friday May 30 2026",
-  "vertical": "${vertical.name}",
-  "executive_summary": "string under 60 words",
-  "top": {
-    "name":"Idea Name",
-    "one_line":"...",
-    "target_user":"...",
-    "pain":"...",
-    "evidence":"summary of the evidence you used",
-    "sources":["https://...","https://..."],
-    "monetization":"$X/mo Pro - $Y/mo Team",
-    "mvp":"Low/Med/High - brief scope",
-    "verdict":"BUILD|VALIDATE|WATCH|KILL",
-    "weighted_score": 8.1,
-    "scores":{"pain_intensity":9,"willingness":7,"reachability":8,"mvp_simplicity":8,"weak_competition":8,"marketing_hook":9,"subscription":7,"founder_fit":8}
-  },
-  "ranking":[
-    {"rank":1,"name":"","line":"","score":8.1,"verdict":"VALIDATE","sources":["https://..."]},
-    {"rank":2,"name":"","line":"","score":7.4,"verdict":"VALIDATE","sources":["https://..."]},
-    {"rank":3,"name":"","line":"","score":6.8,"verdict":"WATCH","sources":["https://..."]}
-  ],
-  "kills":[
-    {"name":"","why":""},
-    {"name":"","why":""},
-    {"name":"","why":""}
-  ],
-  "action_items":[
-    "what to validate today",
-    "what to post",
-    "what NOT to build yet"
-  ]
-}
-
-Rules:
-- NEVER use em dashes. Meka hates them.
-- Never spell agent acronyms letter by letter. Say "Friday" not "F dot R dot I dot D dot A dot Y".
-- Ideas must be mobile-app shaped and solo-founder buildable.
-- Do not repeat ideas already in Meka's portfolio: Tradjent (trading journal), Ru (women's insight), OutdoorSafe (Sky outdoor wellness), DAUBED.IO (tattoo booking), Quovo (hot takes), Estimio, Friday OS (personal iOS Jarvis).
-`.trim();
-}
-
-/* ---------- OPENAI ---------- */
-async function generateBriefing(vertical, scoutPacket) {
-  const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-  const evidenceBlock = scoutPacket.evidence.length
-    ? scoutPacket.evidence.map((e, i) =>
-        `[${i + 1}] ${e.title}\n    ${e.url}\n    ${e.snippet}`
-      ).join("\n\n")
-    : "(No live search evidence available — TAVILY_API_KEY not set or all queries failed. Operate from general market knowledge but flag this in executive_summary.)";
-
-  const userPrompt = `
-Today is ${today}. Vertical: ${vertical.name}.
-
-FRIDAY SCOUTING PACKET — live web evidence:
-${evidenceBlock}
-
-Now produce today's MekaOps Venture Engine briefing. Anchor the top idea in the evidence above. Cite source URLs.
+const HOUSE_RULES = `
+HOUSE RULES (all agents):
+- NEVER use em dashes. Use commas or periods.
+- Never spell acronyms letter by letter. Say "Friday" not "F dot R dot I dot D dot A dot Y".
+- Plain prose. No markdown, no bullets, no emojis in any string value.
+- Reject anything that duplicates Meka's existing portfolio: ${MEKA_PORTFOLIO}.
+- Ideas must be mobile-app shaped and solo-founder buildable in 30 days.
+- Output STRICT JSON only, no commentary outside the JSON.
 `.trim();
 
+/* ---- Generic agent caller ---- */
+async function callOpenAI(systemPrompt, userPayload, modelOverride) {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -183,19 +123,229 @@ Now produce today's MekaOps Venture Engine briefing. Anchor the top idea in the 
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: modelOverride || "gpt-4o-mini",
       messages: [
-        { role: "system", content: bossPrompt(vertical) },
-        { role: "user", content: userPrompt }
+        { role: "system", content: systemPrompt },
+        { role: "user", content: typeof userPayload === "string" ? userPayload : JSON.stringify(userPayload) }
       ],
       response_format: { type: "json_object" },
-      temperature: 0.6,
-      max_tokens: 2000
+      temperature: 0.55,
+      max_tokens: 1500
     })
   });
-  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${(await res.text()).slice(0,200)}`);
   const json = await res.json();
-  return JSON.parse(json.choices[0].message.content);
+  return {
+    data: JSON.parse(json.choices[0].message.content),
+    usage: json.usage
+  };
+}
+
+/* ---- BOSS · Filter (17 → 5) ---- */
+async function agentBossFilter(vertical, scoutPacket) {
+  const sys = `You are B.O.S.S., Meka Anyanwu's chief venture decision agent.
+Friday scouted live web evidence in the ${vertical.name} vertical today.
+Your job: filter aggressively to the TOP 5 candidate ideas that are
+mobile-app shaped, solo-founder buildable, and show clear pain in the evidence.
+Most signals should NOT make the cut. Kill content ideas, enterprise tools,
+SaaS dashboards, and anything overlapping Meka's existing portfolio.
+${HOUSE_RULES}
+
+Output schema:
+{"top5":[{"name":"","one_line":"","target_user":"","pain":"","sources":["url"],"signal_score":1-10}],"discarded":[{"name":"","reason":""}]}`;
+  const userMsg = {
+    vertical: vertical.name,
+    portfolio_to_avoid: MEKA_PORTFOLIO,
+    evidence: scoutPacket.evidence.slice(0,18).map(e => ({ title:e.title, url:e.url, snippet:e.snippet }))
+  };
+  return await callOpenAI(sys, userMsg);
+}
+
+/* ---- VOID · Demand validation (per candidate) ---- */
+async function agentVoid(candidate, vertical) {
+  const sys = `You are V.O.I.D., the demand validation agent.
+Given one candidate app idea and its source evidence, score the actual demand.
+Be skeptical. If evidence is thin, score LOW and flag validation_risk.
+${HOUSE_RULES}
+
+Output schema:
+{"name":"","urgency":1-10,"frequency":1-10,"willingness":1-10,"reachability":1-10,"demand_evidence":"one paragraph citing what you saw in the sources","validation_risk":"one sentence","suggested_validation":"one concrete test"}`;
+  return await callOpenAI(sys, { vertical: vertical.name, candidate });
+}
+
+/* ---- SNIPER · Competitor analysis (per candidate) ---- */
+async function agentSniper(candidate, vertical) {
+  const sys = `You are S.N.I.P.E.R., the competitor and weak-execution hunter.
+Given one candidate app idea and its source URLs, identify existing competitors
+mentioned in the evidence, what users hate about them, and the market gap.
+Score competition_weakness 1-10 (10 = competitors are very weak).
+If entrenched well-executed players (Apple, Google, big-tech) dominate, score LOW.
+${HOUSE_RULES}
+
+Output schema:
+{"name":"","competitors":[{"name":"","weakness":""}],"poor_execution":"common review complaints","market_gap":"specific underserved wedge","differentiation":"how to win","competition_weakness":1-10,"niche_risk":"one sentence"}`;
+  return await callOpenAI(sys, { vertical: vertical.name, candidate });
+}
+
+/* ---- BOSS · Narrow (5 → 3) ---- */
+async function agentBossNarrow(top5, voidOutputs, sniperOutputs) {
+  const sys = `You are B.O.S.S. Narrow the 5 candidates to the top 3 based on
+Void's demand scores and Sniper's competition weakness scores. Kill the 2 weakest
+with one-sentence reasons. Bias toward strong pain plus weak incumbents.
+${HOUSE_RULES}
+
+Output schema:
+{"top3":[{"name":"","one_line":"","target_user":"","pain":"","sources":["url"]}],"kills":[{"name":"","why":""},{"name":"","why":""}]}`;
+  return await callOpenAI(sys, {
+    candidates: top5,
+    void_scores: voidOutputs,
+    sniper_scores: sniperOutputs
+  });
+}
+
+/* ---- BLUE · Ugly MVP (per candidate) ---- */
+async function agentBlue(candidate) {
+  const sys = `You are B.L.U.E., the ugly MVP architect.
+Reduce this idea to the smallest testable build. Must-have features only.
+Define required screens, data model, third-party APIs, and a 7-day validation
+version separate from the 30-day build version.
+Score mvp_simplicity 1-10 (10 = trivially simple, 1 = needs a team).
+${HOUSE_RULES}
+
+Output schema:
+{"name":"","must_have":["feature"],"features_to_avoid":["feature"],"screens":["screen name"],"data_model":"one paragraph","apis":["api name"],"stack_suggestion":"e.g. Swift + Supabase + RevenueCat","complexity":"Low|Medium|High","mvp_simplicity":1-10,"seven_day_version":"one paragraph","thirty_day_version":"one paragraph"}`;
+  return await callOpenAI(sys, candidate);
+}
+
+/* ---- CASH · Pricing & LTV (per candidate) ---- */
+async function agentCash(candidate, sniperData) {
+  const sys = `You are C.A.S.H., the pricing and monetization agent.
+Model how this app makes money. Reference competitor pricing if Sniper found any.
+Suggest tiers, estimate LTV, identify monetization risk, recommend the best first offer.
+Score subscription_potential 1-10 and willingness_to_pay 1-10.
+${HOUSE_RULES}
+
+Output schema:
+{"name":"","revenue_model":"subscription|usage|one-time|B2B|hybrid","pricing_tiers":[{"tier":"Free|Pro|Team","price":"$X/mo or Free","includes":"one sentence"}],"competitor_pricing":"summary","willingness_to_pay":1-10,"revenue_upside":"e.g. $24K MRR at 1K paying users","monetization_risk":"one sentence","best_first_offer":"e.g. first 100 users get 50% off lifetime","subscription_potential":1-10}`;
+  return await callOpenAI(sys, { candidate, sniper_context: sniperData });
+}
+
+/* ---- VIBE · 7-day validation (per candidate) ---- */
+async function agentVibe(candidate) {
+  const sys = `You are V.I.B.E., the pre-build validation agent.
+Design a 7-day validation plan with concrete copy and kill criteria.
+Score marketing_hook_strength 1-10.
+${HOUSE_RULES}
+
+Output schema:
+{"name":"","landing_headline":"under 12 words","waitlist_copy":"under 80 words","tiktok_hooks":["hook under 25 seconds","hook 2","hook 3"],"reddit_posts":[{"subreddit":"r/...","title":"post title","angle":"one sentence"}],"survey_questions":["q1","q2","q3"],"success_criteria":"concrete numbers, e.g. 50 waitlist signups, 5 willing to pay","kill_criteria":"concrete numbers, e.g. under 20 signups in 7 days","marketing_hook_strength":1-10}`;
+  return await callOpenAI(sys, candidate);
+}
+
+/* ---- BOSS · Final synthesis ---- */
+async function agentBossFinal(vertical, top3, voidOut, sniperOut, blueOut, cashOut, vibeOut, kills, evidenceTitles) {
+  const today = new Date().toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" });
+  const sys = `You are B.O.S.S. Synthesize the agent outputs into Meka's morning briefing.
+For each of the top 3, compute the weighted score using:
+pain 20%, willingness 15%, reachability 15%, mvp_simplicity 15%,
+weak_competition 10%, marketing_hook 10%, subscription 10%, founder_fit 5%.
+
+Verdict bands: 8.5+ BUILD, 7.0-8.4 VALIDATE, 5.5-6.9 WATCH, below 5.5 KILL.
+You are direct, skeptical, founder-focused. Address Meka as "King Meka" or "Meka".
+Most ideas should be killed. That is a feature.
+
+Compute pain_intensity from Void's evidence (if pain was obvious, score high).
+founder_fit reflects Meka's strengths: native iOS, solo-builder, AI-first,
+project management background, options trader, creator. Score 1-10.
+
+${HOUSE_RULES}
+
+Output schema:
+{"date":"${today}","vertical":"${vertical.name}","executive_summary":"under 60 words","top":{"name":"","one_line":"","target_user":"","pain":"","evidence":"","sources":["url","url"],"monetization":"","mvp":"","verdict":"BUILD|VALIDATE|WATCH|KILL","weighted_score":1-10,"scores":{"pain_intensity":1-10,"willingness":1-10,"reachability":1-10,"mvp_simplicity":1-10,"weak_competition":1-10,"marketing_hook":1-10,"subscription":1-10,"founder_fit":1-10}},"ranking":[{"rank":1,"name":"","line":"","score":1-10,"verdict":"","sources":["url"]},{"rank":2,"name":"","line":"","score":1-10,"verdict":"","sources":["url"]},{"rank":3,"name":"","line":"","score":1-10,"verdict":"","sources":["url"]}],"kills":[{"name":"","why":""}],"action_items":["validate this today","post this","do NOT build this yet"]}`;
+  const userPayload = {
+    vertical: vertical.name,
+    top3, void: voidOut, sniper: sniperOut,
+    mvp: blueOut, pricing: cashOut, validation: vibeOut,
+    kills_so_far: kills,
+    evidence_titles: evidenceTitles
+  };
+  return await callOpenAI(sys, userPayload, "gpt-4o-mini");
+}
+
+/* ---- ORCHESTRATOR ---- */
+async function generateBriefing(vertical, scoutPacket) {
+  if (!scoutPacket.evidence.length) {
+    throw new Error("Friday scout packet is empty. Check TAVILY_API_KEY.");
+  }
+
+  const usage = {};
+  const log = [];
+  const evidenceTitles = scoutPacket.evidence.map(e => `${e.title} (${e.url})`);
+
+  // 1. BOSS filters 17 → 5
+  log.push("BOSS_FILTER → cutting 17 signals to top 5");
+  const filterResp = await agentBossFilter(vertical, scoutPacket);
+  usage.boss_filter = filterResp.usage;
+  const top5 = filterResp.data.top5 || [];
+  if (top5.length === 0) throw new Error("Boss filter returned zero candidates.");
+
+  // 2. PARALLEL: Void + Sniper on each of the top 5
+  log.push(`VOID + SNIPER → analyzing ${top5.length} candidates in parallel`);
+  const [voidResults, sniperResults] = await Promise.all([
+    Promise.all(top5.map(c => agentVoid(c, vertical).catch(e => ({ data:{ name:c.name, error:e.message }})))),
+    Promise.all(top5.map(c => agentSniper(c, vertical).catch(e => ({ data:{ name:c.name, error:e.message }}))))
+  ]);
+  const voidData = voidResults.map(r => r.data);
+  const sniperData = sniperResults.map(r => r.data);
+  usage.void = voidResults.reduce((s,r) => s + (r.usage?.total_tokens||0), 0);
+  usage.sniper = sniperResults.reduce((s,r) => s + (r.usage?.total_tokens||0), 0);
+
+  // 3. BOSS narrows 5 → 3
+  log.push("BOSS_NARROW → narrowing 5 to top 3");
+  const narrowResp = await agentBossNarrow(top5, voidData, sniperData);
+  usage.boss_narrow = narrowResp.usage;
+  const top3 = narrowResp.data.top3 || [];
+  const earlyKills = narrowResp.data.kills || [];
+  if (top3.length === 0) throw new Error("Boss narrow returned zero candidates.");
+
+  // 4. PARALLEL: Blue + Cash + Vibe on each of the top 3
+  log.push(`BLUE + CASH + VIBE → engineering and pricing ${top3.length} finalists in parallel`);
+  const top3Sniper = top3.map(t => sniperData.find(s => s.name === t.name) || {});
+  const [blueResults, cashResults, vibeResults] = await Promise.all([
+    Promise.all(top3.map(c => agentBlue(c).catch(e => ({ data:{ name:c.name, error:e.message }})))),
+    Promise.all(top3.map((c,i) => agentCash(c, top3Sniper[i]).catch(e => ({ data:{ name:c.name, error:e.message }})))),
+    Promise.all(top3.map(c => agentVibe(c).catch(e => ({ data:{ name:c.name, error:e.message }}))))
+  ]);
+  const blueData = blueResults.map(r => r.data);
+  const cashData = cashResults.map(r => r.data);
+  const vibeData = vibeResults.map(r => r.data);
+  usage.blue = blueResults.reduce((s,r) => s + (r.usage?.total_tokens||0), 0);
+  usage.cash = cashResults.reduce((s,r) => s + (r.usage?.total_tokens||0), 0);
+  usage.vibe = vibeResults.reduce((s,r) => s + (r.usage?.total_tokens||0), 0);
+
+  // 5. BOSS final synthesis
+  log.push("BOSS_FINAL → synthesizing morning briefing");
+  const top3Void = top3.map(t => voidData.find(v => v.name === t.name) || {});
+  const finalResp = await agentBossFinal(vertical, top3, top3Void, top3Sniper, blueData, cashData, vibeData, earlyKills, evidenceTitles);
+  usage.boss_final = finalResp.usage;
+  const briefing = finalResp.data;
+
+  // Attach the per-agent reports so the cockpit dossiers / Supabase get the full chain
+  briefing.agent_reports = {
+    friday: { sources_scouted: scoutPacket.evidence.length, queries_run: scoutPacket.queries.length },
+    boss_filter: filterResp.data,
+    void: voidData,
+    sniper: sniperData,
+    boss_narrow: narrowResp.data,
+    blue: blueData,
+    cash: cashData,
+    vibe: vibeData
+  };
+  briefing.run_log = log;
+  briefing.usage = usage;
+  briefing.usage_total_tokens = Object.values(usage).reduce((s,v) => s + (typeof v === "number" ? v : (v?.total_tokens||0)), 0);
+
+  return briefing;
 }
 
 /* ---------- EMAIL ---------- */
@@ -355,6 +505,8 @@ export default async function handler(req) {
       vertical: vertical.name,
       sources_scouted: scoutPacket.evidence.length,
       sources: (scoutPacket.evidence || []).map(e => ({ url: e.url, title: e.title })),
+      pipeline_log: briefing.run_log || [],
+      usage_total_tokens: briefing.usage_total_tokens || 0,
       briefing,
       email,
       generated_at: new Date().toISOString()
