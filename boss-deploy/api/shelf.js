@@ -33,9 +33,11 @@ export default async function handler(req, res) {
     const rows = await r.json();
 
     // Build the shelf — top idea + secondary rankings, exclude KILL.
+    // Payload structure: { ok, vertical, sources, briefing:{ top, ranking, ... } }
     const shelf = [];
     for (const row of rows) {
       const payload = row.payload || {};
+      const briefing = payload.briefing || {};
       // Top idea
       if (row.top_verdict && row.top_verdict !== "KILL") {
         shelf.push({
@@ -44,12 +46,12 @@ export default async function handler(req, res) {
           score: row.top_score,
           date: row.date,
           vertical: row.vertical,
-          one_line: payload.top?.one_line || "",
-          sources: payload.top?.sources || []
+          one_line: briefing.top?.one_line || "",
+          sources: briefing.top?.sources || []
         });
       }
       // #2 and #3
-      for (const r2 of (payload.ranking || []).slice(1)) {
+      for (const r2 of (briefing.ranking || []).slice(1)) {
         if (r2.verdict && r2.verdict !== "KILL") {
           shelf.push({
             name: r2.name,
