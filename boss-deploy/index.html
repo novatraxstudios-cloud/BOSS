@@ -1231,8 +1231,12 @@ async function loadLiveBriefing(){
     state.liveBriefingDate = b.date;
     state.liveVertical = b.vertical;
 
-    // Repaint the right-side dossier panels with fresh data
-    renderTop();
+    // Repaint the right-side panels with fresh data
+    $("topName").textContent  = DATA.top.name || "";
+    $("topLine").textContent  = DATA.top.line || "";
+    $("topTarget").textContent= DATA.top.target || "—";
+    $("topModel").textContent = DATA.top.model || "—";
+    $("topMvp").textContent   = DATA.top.mvp || "—";
     renderScores();
     renderKills();
     applyVerdict(DATA.top.verdict);
