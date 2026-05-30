@@ -884,8 +884,9 @@ function boot(){
   }else{
     toast(`Ready. Press Arm listener and say "${state.cfg.wake}".`);
   }
-  // Pull today's autonomous briefing from the backend, if it's been generated.
+  // Pull today's autonomous briefing AND the shelf of past ideas
   loadLiveBriefing();
+  loadShelf();
   // Preload synth voices on first gesture
   document.addEventListener("click",()=>{try{window.speechSynthesis&&speechSynthesis.getVoices();}catch(e){}},{once:true});
 }
@@ -1192,6 +1193,25 @@ function litCard(name){
 function doneCard(name){
   const el=document.querySelector(`.op-card[data-card="${name}"]`);
   if(el){el.classList.remove("lit");el.classList.add("done")}
+}
+
+/* ---------- SHELF FETCH ----------
+   Pulls the list of previously-pitched (VALIDATE/WATCH) ideas from Supabase
+   so BOSS knows what we've already looked at and won't repeat himself. */
+async function loadShelf(){
+  try{
+    const r = await fetch("/api/shelf", { cache:"no-store" });
+    if(!r.ok) throw new Error("shelf "+r.status);
+    const j = await r.json();
+    state.shelf = j.shelf || [];
+    state.shelfStats = { count:j.count||0, builds:j.builds||0, validates:j.validates||0, watches:j.watches||0 };
+    if(state.shelf.length){
+      log("TRON",`Shelf loaded · ${state.shelf.length} past ideas (${state.shelfStats.validates} VALIDATE, ${state.shelfStats.watches} WATCH).`,"");
+    }
+  }catch(e){
+    state.shelf = [];
+    state.shelfStats = { count:0 };
+  }
 }
 
 /* ---------- LIVE BACKEND FETCH ---------- */
@@ -1832,6 +1852,45 @@ async function routeIntent(text){
     return;
   }
 
+  // Time of day
+  if(/\b(what(?:'s| is) the time|what time is it|current time|time right now)\b/.test(text)){
+    const tz = state.cfg.tz || "America/Chicago";
+    const t = new Date().toLocaleString("en-US", { timeZone: tz, weekday:"long", hour:"numeric", minute:"2-digit", hour12:true });
+    await say(`It's ${t} for you, King Meka.`);
+    return;
+  }
+
+  // Shelf / past ideas / "what have we looked at"
+  if(/\b(shelf|shelved|past ideas|previous ideas|what (have|did) we (looked|look) (at|into)|build later|on the shelf|the shelf|memory|history)\b/.test(text)){
+    const shelf = state.shelf || [];
+    if(shelf.length === 0){
+      await say(`Nothing on the shelf yet, King Meka. We haven't run enough briefings to build memory. Run a few daily reports and items will start landing here.`);
+      return;
+    }
+    const validates = shelf.filter(s=>s.verdict==="VALIDATE").slice(0,4);
+    const watches   = shelf.filter(s=>s.verdict==="WATCH").slice(0,3);
+    let line = `We have ${shelf.length} ideas on the shelf, King Meka. `;
+    if(validates.length){
+      line += `Worth validating: ${validates.map(v=>v.name).join(", ")}. `;
+    }
+    if(watches.length){
+      line += `On watch: ${watches.map(w=>w.name).join(", ")}. `;
+    }
+    line += `Say "tell me about" any of them and I'll pull the details.`;
+    await say(line);
+    return;
+  }
+
+  // Recall a specific past idea by name
+  if(state.shelf && state.shelf.length){
+    const lower = text.toLowerCase();
+    const hit = state.shelf.find(s => s.name && lower.includes(s.name.toLowerCase()));
+    if(hit && /\b(tell me about|what about|recall|remind me|details|pull up)\b/.test(text)){
+      await say(`${hit.name}, verdict ${hit.verdict}, scouted ${hit.date}. ${hit.one_line||""}`);
+      return;
+    }
+  }
+
   // ---- Everything else: route to OpenAI for an open-ended answer ----
   // "explain", "what does that mean", "tell me more", "elaborate", etc.
   // plus any unrecognized question.
@@ -1859,10 +1918,24 @@ function bossSystemPrompt(){
   const tasks=AGENTS.map(a=>`- ${spk(a[0])} (${a[2]}): ${state.agentTasks[a[0]]||"standing by"}`).join("\n");
   const seed = sanitizedSeed(!!state.cfg.sendFullMemory);
   const projects = Object.entries(seed.apps_in_flight||{}).map(([k,v])=>`  • ${k}: ${v}`).join("\n");
+  // Inject the actual current local time + timezone so BOSS doesn't hallucinate "7 PM" when it's 10 AM
+  const now = new Date();
+  const tz = state.cfg.tz || "America/Chicago";
+  const nowStr = now.toLocaleString("en-US", { timeZone: tz, weekday:"long", month:"long", day:"numeric", year:"numeric", hour:"numeric", minute:"2-digit", hour12:true });
+  const shelf = state.shelf || [];
+  const shelfLines = shelf.slice(0,12).map(s=>`  • ${s.name} (${s.verdict}, ${s.date}): ${s.one_line||""}`).join("\n");
   return [
     "You are B.O.S.S. — Because Ordinary Systems Suck — Meka Anyanwu's autonomous venture intelligence voice.",
     "You always address him as 'King Meka' or just 'Meka'.",
     "Persona: Tony Stark caliber. Direct, skeptical, founder-focused, allergic to fluff. You kill weak ideas without hesitation. You speak with calm command, never sycophantic.",
+    "",
+    "==== RIGHT NOW ====",
+    `Current local time for Meka: ${nowStr} (${tz}).`,
+    "When asked the time or anything time-sensitive, use this exact value. Never guess.",
+    "",
+    "==== SHELF · IDEAS WE'VE EVALUATED BEFORE ====",
+    (shelfLines || "  (nothing on the shelf yet)"),
+    "When Meka asks about past ideas, the shelf, or what we've looked at, recap from this list. Do not invent items not on it.",
     "",
     "==== WHO MEKA IS ====",
     `- ${seed.identity.name} from ${seed.identity.origin}, based ${seed.identity.base}. Timezone ${seed.identity.timezone}.`,
