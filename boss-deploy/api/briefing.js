@@ -259,53 +259,70 @@ async function sendEmail(briefing, scoutPacket) {
   return { sent: true };
 }
 
-/* ---------- VERCEL KV / UPSTASH REDIS (auto-detect) ----------
-   Vercel renamed KV → Marketplace (Upstash) in 2024. Different naming.
-   Try every common variant so this works regardless of how the user
-   connected the database. */
-function kvUrl(){
-  return process.env.KV_REST_API_URL
-      || process.env.UPSTASH_REDIS_REST_URL
-      || process.env.REDIS_REST_API_URL
-      || process.env.STORAGE_REST_API_URL
+/* ---------- SUPABASE STORAGE (auto-detect env naming) ----------
+   Vercel-Supabase integration in 2025 may inject env vars under several
+   prefixes depending on when the project was connected. Try them all. */
+function sbUrl(){
+  return process.env.SUPABASE_URL
+      || process.env.NEXT_PUBLIC_SUPABASE_URL
+      || process.env.POSTGRES_URL && null  // postgres direct URL won't work for REST
       || null;
 }
-function kvToken(){
-  return process.env.KV_REST_API_TOKEN
-      || process.env.UPSTASH_REDIS_REST_TOKEN
-      || process.env.REDIS_REST_API_TOKEN
-      || process.env.STORAGE_REST_API_TOKEN
+function sbServiceKey(){
+  return process.env.SUPABASE_SERVICE_ROLE_KEY
+      || process.env.SUPABASE_SERVICE_KEY
+      || process.env.SUPABASE_KEY
       || null;
 }
-async function kvCmd(cmd){
-  const url=kvUrl(), token=kvToken();
-  if (!url || !token) return null;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(cmd)
-  });
-  if (!res.ok) return null;
-  const j = await res.json();
-  return j.result;
+function sbAnonKey(){
+  return process.env.SUPABASE_ANON_KEY
+      || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      || null;
 }
 
-function todayKey(){
+function todayDateUTC(){
   const d = new Date();
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth()+1).padStart(2,"0");
   const day = String(d.getUTCDate()).padStart(2,"0");
-  return `briefing:${y}-${m}-${day}`;
+  return `${y}-${m}-${day}`;
 }
 
 async function persistBriefing(payload){
-  const ok = await kvCmd(["SET", todayKey(), JSON.stringify(payload), "EX", 60*60*24*7]); // 7 day TTL
-  // Also maintain a "latest" pointer for /api/latest to find quickly
-  if (ok) await kvCmd(["SET", "briefing:latest", JSON.stringify(payload), "EX", 60*60*24*7]);
-  return !!ok;
+  const url = sbUrl();
+  const key = sbServiceKey();
+  if (!url || !key) return { ok:false, reason:"Supabase URL or service key not set" };
+
+  const briefing = payload.briefing || {};
+  const row = {
+    date: todayDateUTC(),
+    vertical: payload.vertical || briefing.vertical || null,
+    top_name: briefing.top?.name || null,
+    top_verdict: briefing.top?.verdict || null,
+    top_score: briefing.top?.weighted_score || null,
+    sources_scouted: payload.sources_scouted || 0,
+    sources: payload.sources || [],
+    payload: payload,
+    generated_at: payload.generated_at || new Date().toISOString()
+  };
+
+  // Upsert on date so re-running the same day overwrites instead of erroring
+  const res = await fetch(`${url}/rest/v1/briefings?on_conflict=date`, {
+    method: "POST",
+    headers: {
+      "apikey": key,
+      "Authorization": `Bearer ${key}`,
+      "Content-Type": "application/json",
+      "Prefer": "resolution=merge-duplicates,return=minimal"
+    },
+    body: JSON.stringify(row)
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(()=>"");
+    return { ok:false, reason:`Supabase ${res.status}: ${errText.slice(0,180)}` };
+  }
+  return { ok:true };
 }
 
 /* ---------- SECRET CHECK ---------- */
@@ -343,16 +360,16 @@ export default async function handler(req) {
       generated_at: new Date().toISOString()
     };
     const persisted = await persistBriefing(payload);
-    payload.persisted_to_kv = persisted;
+    payload.persisted_to_supabase = persisted.ok;
+    if (!persisted.ok) payload.persist_reason = persisted.reason;
     payload.debug_env = {
-      has_kv_url: !!process.env.KV_REST_API_URL,
-      has_kv_token: !!process.env.KV_REST_API_TOKEN,
-      has_upstash_url: !!process.env.UPSTASH_REDIS_REST_URL,
-      has_upstash_token: !!process.env.UPSTASH_REDIS_REST_TOKEN,
-      has_redis_url: !!process.env.REDIS_REST_API_URL,
-      has_storage_url: !!process.env.STORAGE_REST_API_URL,
-      resolved_url: kvUrl() ? "found" : "MISSING",
-      resolved_token: kvToken() ? "found" : "MISSING"
+      has_supabase_url: !!process.env.SUPABASE_URL,
+      has_next_public_supabase_url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      has_service_role_key: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      has_service_key: !!process.env.SUPABASE_SERVICE_KEY,
+      has_anon_key: !!process.env.SUPABASE_ANON_KEY,
+      resolved_url: sbUrl() ? "found" : "MISSING",
+      resolved_service_key: sbServiceKey() ? "found" : "MISSING"
     };
     return new Response(JSON.stringify(payload, null, 2), {
       status: 200,
