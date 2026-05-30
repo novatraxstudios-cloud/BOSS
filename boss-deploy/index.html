@@ -210,6 +210,100 @@
   .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:30;border:1px solid var(--line);background:rgba(2,12,23,.9);color:var(--line);padding:10px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;opacity:0;transition:.2s;letter-spacing:.08em}
   .toast.show{opacity:1}
 
+  /* Agent rail is clickable */
+  .agent{cursor:pointer;transition:transform .12s, border-color .2s}
+  .agent:hover{transform:translateX(2px);border-color:var(--line)}
+
+  /* ===== AGENT DOSSIER MODAL ===== */
+  .dossier-bg{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);z-index:40;display:none;align-items:center;justify-content:center;padding:18px}
+  .dossier-bg.open{display:flex}
+  .dossier{
+    width:min(820px,100%);max-height:90vh;overflow:hidden;
+    border:1px solid var(--line);
+    background:linear-gradient(145deg,rgba(28,232,255,.07),transparent 32%),var(--glass);
+    box-shadow:0 32px 100px rgba(0,0,0,.65),0 0 80px rgba(28,232,255,.18),inset 0 0 40px rgba(28,232,255,.05);
+    backdrop-filter:blur(14px);
+    clip-path:polygon(0 18px,18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%);
+    display:grid;grid-template-rows:auto 1fr auto;
+    position:relative;
+  }
+  .dossier header{
+    padding:18px 22px;
+    border-bottom:1px solid var(--line-soft);
+    display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;
+    background:linear-gradient(90deg,rgba(28,232,255,.08),transparent 60%);
+  }
+  .dossier .sig-big{
+    width:64px;height:64px;border-radius:50%;
+    border:1px solid var(--line);background:rgba(28,232,255,.08);
+    display:grid;place-items:center;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-weight:900;font-size:16px;color:var(--line);letter-spacing:.05em;
+    box-shadow:0 0 24px rgba(28,232,255,.3),inset 0 0 12px rgba(28,232,255,.1);
+    position:relative;
+  }
+  .dossier .sig-big::after{content:"";position:absolute;inset:-6px;border:1px dashed rgba(28,232,255,.4);border-radius:50%;animation:spin 14s linear infinite}
+  .dossier .sig-big.active{border-color:var(--ember);color:var(--ember);box-shadow:0 0 24px rgba(255,179,77,.4),inset 0 0 12px rgba(255,179,77,.15)}
+  .dossier .sig-big.active::after{border-color:rgba(255,179,77,.5)}
+  .dossier .sig-big.done{border-color:var(--ok);color:var(--ok);box-shadow:0 0 24px rgba(77,255,194,.3),inset 0 0 12px rgba(77,255,194,.1)}
+  .dossier h2{margin:0;font-family:Inter,sans-serif;font-weight:900;font-size:22px;letter-spacing:.06em;text-transform:uppercase;color:#fff}
+  .dossier .role{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin-top:4px}
+  .dossier .close{
+    background:transparent;border:1px solid var(--line-soft);color:var(--ink);
+    width:36px;height:36px;display:grid;place-items:center;cursor:pointer;
+    clip-path:polygon(0 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%);
+    transition:border-color .15s;
+  }
+  .dossier .close:hover{border-color:var(--line);color:var(--line)}
+
+  .dossier .body{padding:20px 22px;overflow:auto;display:grid;gap:18px}
+  .dossier .body::-webkit-scrollbar{width:6px}
+  .dossier .body::-webkit-scrollbar-thumb{background:var(--line-soft)}
+
+  .doss-section{border:1px solid rgba(28,232,255,.16);background:rgba(2,12,23,.45);padding:14px;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%)}
+  .doss-eyebrow{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--line);font-size:10px;letter-spacing:.22em;text-transform:uppercase;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+  .doss-eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--line);box-shadow:0 0 8px var(--line)}
+
+  .doss-current{font-size:15px;color:#fff;line-height:1.4;margin-bottom:10px}
+  .doss-status-pill{
+    display:inline-block;padding:3px 10px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;
+    letter-spacing:.2em;text-transform:uppercase;margin-bottom:10px;
+  }
+  .doss-status-pill.idle{background:rgba(127,157,175,.2);color:var(--dim);border:1px solid var(--muted)}
+  .doss-status-pill.active{background:var(--ember);color:#190b00}
+  .doss-status-pill.done{background:var(--ok);color:#031810}
+
+  .doss-progress{height:10px;border:1px solid rgba(28,232,255,.2);background:rgba(28,232,255,.05);overflow:hidden;position:relative}
+  .doss-progress .bar{height:100%;background:linear-gradient(90deg,var(--line),var(--ember));box-shadow:0 0 14px var(--line);transition:width .6s ease;position:relative}
+  .doss-progress .bar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);animation:barSpark 1.6s linear infinite}
+  .doss-progress-row{display:flex;justify-content:space-between;align-items:center;font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.14em;margin-top:6px}
+
+  .doss-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .doss-metric{border:1px solid rgba(28,232,255,.14);background:rgba(2,12,23,.55);padding:10px}
+  .doss-metric span{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);font-size:9px;letter-spacing:.18em;text-transform:uppercase}
+  .doss-metric b{display:block;margin-top:4px;color:#fff;font-size:18px;font-family:ui-monospace,monospace}
+  .doss-metric.gold b{color:var(--ember)}
+  .doss-metric.green b{color:var(--ok)}
+
+  .doss-feed{max-height:240px;overflow:auto;font-family:ui-monospace,monospace;font-size:11px;line-height:1.7;background:rgba(2,12,23,.55);border:1px solid rgba(28,232,255,.12);padding:10px}
+  .doss-feed::-webkit-scrollbar{width:6px}.doss-feed::-webkit-scrollbar-thumb{background:var(--line-soft)}
+  .doss-feed-line{display:grid;grid-template-columns:60px 1fr;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(28,232,255,.08)}
+  .doss-feed-line .t{color:var(--muted)}
+  .doss-feed-line .m{color:var(--ink)}
+  .doss-feed-empty{color:var(--muted);text-align:center;padding:14px}
+
+  .doss-list{display:grid;gap:6px}
+  .doss-list-item{display:grid;grid-template-columns:1fr auto;gap:10px;padding:6px 0;border-bottom:1px dashed rgba(28,232,255,.08);font-size:12px}
+  .doss-list-item a{color:var(--line);text-decoration:none;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px;display:inline-block}
+  .doss-list-item a:hover{text-decoration:underline}
+
+  @media(max-width:760px){
+    .dossier header{grid-template-columns:auto 1fr;}
+    .dossier .close{grid-column:span 2;justify-self:end}
+    .doss-metrics{grid-template-columns:repeat(2,1fr)}
+  }
+
   @keyframes worldGlow{50%{filter:saturate(1.25) brightness(1.08)}}
   @keyframes gridDrift{to{background-position:64px 64px,64px 64px,320px 320px}}
   @keyframes panelSweep{0%,55%{transform:translateX(-130%)}78%,100%{transform:translateX(130%)}}
@@ -370,6 +464,23 @@
     </section>
   </aside>
 </main>
+
+<!-- ===== Agent Dossier Modal ===== -->
+<div class="dossier-bg" id="dossierBg" onclick="if(event.target===this) closeDossier()">
+  <div class="dossier">
+    <header>
+      <div class="sig-big" id="dossSig">--</div>
+      <div>
+        <h2 id="dossName">Agent</h2>
+        <div class="role" id="dossRole">role</div>
+      </div>
+      <button class="close" type="button" onclick="closeDossier()">✕</button>
+    </header>
+    <div class="body" id="dossBody">
+      <!-- populated by openDossier() -->
+    </div>
+  </div>
+</div>
 
 <div class="drawer-bg" id="drawer">
   <div class="drawer">
@@ -701,8 +812,49 @@ const state={
   briefingActive:false,
   agentTasks:{},              // code -> current task string
   history:[],                 // rolling conversation: [{role,content}]
-  lastAnswer:""               // last thing BOSS said, for "explain that"
+  lastAnswer:"",              // last thing BOSS said, for "explain that"
+  // Per-agent detailed state for the dossier
+  agentState:{},              // code -> { status, current, progress, history:[], metrics:{} }
+  openDossierCode:null,       // currently open agent dossier
+  progressTimers:{}           // code -> interval id for progress animation
 };
+
+// Each agent's domain-specific metrics. Updated during briefings.
+const AGENT_METRIC_TEMPLATE={
+  BOSS:{ verdicts_today:0, ideas_killed:0, top_score:"--" },
+  FRDY:{ sources_scouted:0, complaint_clusters:0, queries_run:0 },
+  SNPR:{ competitors_analyzed:0, weakness_flags:0, market_gaps:0 },
+  VOID:{ demand_signals:0, urgency_avg:"--", wtp_clues:0 },
+  BLUE:{ mvp_screens:0, apis_required:0, complexity:"--" },
+  VIBE:{ hooks_generated:0, tests_designed:0, kill_criteria:0 },
+  CASH:{ pricing_tiers:0, ltv_models:0, revenue_upside:"--" },
+  TRON:{ runs_today:0, api_cost:"$0.00", errors:0 }
+};
+
+// What each agent does between briefings, in dossier-friendly long form
+const AGENT_BG_DETAILS={
+  BOSS:"Reviewing yesterday's verdicts and preparing tomorrow's research packet. Standing by for next scheduled run.",
+  FRDY:"Continuously monitoring 47 subreddits, 12 newsletters, App Store new releases, and Product Hunt drops. Background scan only.",
+  SNPR:"Re-auditing the top 14 competitors in last verdict's niche. Watching their pricing pages for changes.",
+  VOID:"Sampling search volume and discussion velocity on yesterday's keyword clusters every 6 hours.",
+  BLUE:"Refining the ugly MVP scope on yesterday's top idea. Sketching data models and screen flows.",
+  VIBE:"Drafting validation hooks and TikTok scripts for ideas in the WATCH pile.",
+  CASH:"Stress-testing pricing assumptions against competitor moves. Modeling sensitivity at three tiers.",
+  TRON:"Watching telemetry, API spend, and queue depth. Listening for failed runs across all agents."
+};
+
+function initAgentState(){
+  AGENTS.forEach(a=>{
+    const code=a[0];
+    state.agentState[code] = {
+      status:"IDLE",
+      current: AGENT_BG_DETAILS[code] || "Standing by.",
+      progress:0,
+      history:[],
+      metrics: { ...(AGENT_METRIC_TEMPLATE[code]||{}) }
+    };
+  });
+}
 
 // Seed initial background tasks
 AGENTS.forEach(a=>{ state.agentTasks[a[0]] = pickBg(a[0]); });
@@ -713,6 +865,7 @@ function $(id){return document.getElementById(id)}
 
 /* ---------- BOOT ---------- */
 function boot(){
+  initAgentState();
   renderAgents();
   renderScores();
   renderKills();
@@ -850,7 +1003,7 @@ function verdictFromScore(n){
 /* ---------- RENDER ---------- */
 function renderAgents(){
   $("agents").innerHTML=AGENTS.map(a=>`
-    <div class="agent" data-code="${a[0]}">
+    <div class="agent" data-code="${a[0]}" onclick="openDossier('${a[0]}')" title="Click for ${a[1]} dossier">
       <div class="sig">${a[0]}</div>
       <div><div class="name">${a[1]}</div><div class="role">${a[2]}</div></div>
       <div class="state">IDLE</div>
@@ -922,10 +1075,112 @@ function setAgent(code,mode){
     if(mode==="DONE")el.classList.add("done");
     el.querySelector(".state").textContent=mode;
   });
+  // mirror to detailed state
+  const s = state.agentState[code];
+  if(!s) return;
+  s.status = mode==="ACTIVE"?"ACTIVE":mode==="DONE"?"DONE":"IDLE";
+  if(mode==="ACTIVE"){ s.progress=0; startProgressAnim(code); }
+  if(mode==="DONE"){
+    stopProgressAnim(code);
+    s.progress=100;
+    if(s.current) s.history.unshift({ task:s.current, t:new Date().toLocaleTimeString("en-US",{hour12:false}) });
+    if(s.history.length>10) s.history.length=10;
+  }
+  if(mode==="IDLE"){ stopProgressAnim(code); s.progress=0; }
+  if(state.openDossierCode===code) renderDossier(code);
 }
 function resetAgents(){
   AGENTS.forEach(a=>setAgent(a[0],"IDLE"));
   document.querySelectorAll(".op-card").forEach(c=>c.classList.remove("lit","done"));
+}
+
+/* ---------- Per-agent progress animation ---------- */
+function startProgressAnim(code){
+  stopProgressAnim(code);
+  const s=state.agentState[code]; if(!s) return;
+  const startedAt=Date.now();
+  state.progressTimers[code]=setInterval(()=>{
+    // Climb to ~90% asymptotically over ~1.6s, then hold for DONE to push to 100%
+    const elapsed=Date.now()-startedAt;
+    const target=90*(1-Math.exp(-elapsed/600));
+    s.progress=Math.min(94,target);
+    if(state.openDossierCode===code) updateProgressBar(code);
+  },80);
+}
+function stopProgressAnim(code){
+  if(state.progressTimers[code]){clearInterval(state.progressTimers[code]); state.progressTimers[code]=null;}
+}
+
+/* ---------- Dossier ---------- */
+function openDossier(code){
+  state.openDossierCode=code;
+  renderDossier(code);
+  $("dossierBg").classList.add("open");
+}
+function closeDossier(){
+  state.openDossierCode=null;
+  $("dossierBg").classList.remove("open");
+}
+
+function updateProgressBar(code){
+  const s=state.agentState[code]; if(!s) return;
+  const bar=document.querySelector("#dossBody .doss-progress .bar");
+  const pct=document.querySelector("#dossBody .doss-pct");
+  if(bar) bar.style.width=Math.round(s.progress)+"%";
+  if(pct) pct.textContent=Math.round(s.progress)+"%";
+}
+
+function renderDossier(code){
+  const a = AGENTS.find(x=>x[0]===code);
+  if(!a) return;
+  const s = state.agentState[code] || { status:"IDLE", current:"--", progress:0, history:[], metrics:{} };
+  $("dossSig").textContent=a[0];
+  $("dossSig").className="sig-big "+(s.status==="ACTIVE"?"active":s.status==="DONE"?"done":"");
+  $("dossName").textContent=`${spk(code)} · ${a[1]}`;
+  $("dossRole").textContent=a[2];
+
+  // Current task + status + progress
+  const statusClass = s.status==="ACTIVE"?"active":s.status==="DONE"?"done":"idle";
+  const current = s.current || (state.briefingActive ? "Awaiting orchestrator handoff." : (AGENT_BG_DETAILS[code]||"Standing by."));
+
+  // Domain metrics
+  const m = s.metrics || {};
+  const metricsHTML = Object.entries(m).map(([k,v],i)=>{
+    const cls = i===0 ? "gold" : (i===1 ? "" : "green");
+    const label = k.replace(/_/g," ");
+    return `<div class="doss-metric ${cls}"><span>${label}</span><b>${v}</b></div>`;
+  }).join("");
+
+  // History
+  const historyHTML = s.history.length
+    ? s.history.map(h=>`<div class="doss-feed-line"><span class="t">${h.t}</span><span class="m">${h.task}</span></div>`).join("")
+    : `<div class="doss-feed-empty">No completed tasks yet today. Run a briefing to see ${spk(code)} work.</div>`;
+
+  $("dossBody").innerHTML = `
+    <section class="doss-section">
+      <div class="doss-eyebrow">Currently</div>
+      <div class="doss-status-pill ${statusClass}">${s.status}</div>
+      <div class="doss-current">${current}</div>
+      <div class="doss-progress"><div class="bar" style="width:${Math.round(s.progress)}%"></div></div>
+      <div class="doss-progress-row"><span>TASK PROGRESS</span><span class="doss-pct">${Math.round(s.progress)}%</span></div>
+    </section>
+
+    <section class="doss-section">
+      <div class="doss-eyebrow">Agent metrics · today</div>
+      <div class="doss-metrics">${metricsHTML || '<div class="doss-feed-empty">No metrics yet.</div>'}</div>
+    </section>
+
+    <section class="doss-section">
+      <div class="doss-eyebrow">Recent activity</div>
+      <div class="doss-feed">${historyHTML}</div>
+    </section>
+
+    ${code==="FRDY" && (state.lastSources||[]).length ? `
+    <section class="doss-section">
+      <div class="doss-eyebrow">Sources scouted (live)</div>
+      <div class="doss-list">${(state.lastSources||[]).slice(0,8).map(u=>`<div class="doss-list-item"><a href="${u}" target="_blank" rel="noopener">${u}</a></div>`).join("")}</div>
+    </section>` : ""}
+  `;
 }
 function litCard(name){
   document.querySelectorAll(".op-card").forEach(c=>c.classList.remove("lit"));
@@ -939,6 +1194,40 @@ function doneCard(name){
 
 /* ---------- BRIEFING PIPELINE ---------- */
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+// Increment the right metric on the right agent based on what message just fired.
+function bumpAgentMetrics(code, msg){
+  const m = state.agentState[code]?.metrics;
+  if(!m) return;
+  const t = msg.toLowerCase();
+  if(code==="FRDY"){
+    if(/scanning|scout|harvest/.test(t)) m.queries_run = (m.queries_run||0)+5;
+    if(/clusters|complaints/.test(t)) { m.complaint_clusters=(m.complaint_clusters||0)+17; m.sources_scouted=(m.sources_scouted||0)+18; }
+  }
+  if(code==="SNPR"){
+    if(/competitor|weakness/.test(t)){ m.competitors_analyzed=(m.competitors_analyzed||0)+14; m.weakness_flags=(m.weakness_flags||0)+3; m.market_gaps=(m.market_gaps||0)+2; }
+  }
+  if(code==="VOID"){
+    if(/demand|pressure|urgency/.test(t)){ m.demand_signals=(m.demand_signals||0)+5; m.urgency_avg="7.4"; m.wtp_clues=(m.wtp_clues||0)+3; }
+  }
+  if(code==="BLUE"){
+    if(/mvp|screens|calendar|focus/.test(t)){ m.mvp_screens=3; m.apis_required=2; m.complexity="Low"; }
+  }
+  if(code==="VIBE"){
+    if(/validation|hooks|tiktok|reddit/.test(t)){ m.hooks_generated=(m.hooks_generated||0)+3; m.tests_designed=(m.tests_designed||0)+1; m.kill_criteria=(m.kill_criteria||0)+1; }
+  }
+  if(code==="CASH"){
+    if(/subscription|pricing|model|ltv/.test(t)){ m.pricing_tiers=3; m.ltv_models=(m.ltv_models||0)+1; m.revenue_upside="$24K MRR @ 1K users"; }
+  }
+  if(code==="TRON"){
+    if(/telemetry|envelope|opened/.test(t)){ m.runs_today=(m.runs_today||0)+1; }
+    if(/email|report saved|saved/.test(t)){ m.api_cost="$0.04"; }
+  }
+  if(code==="BOSS"){
+    if(/filtering|kill/.test(t)) m.ideas_killed=(m.ideas_killed||0)+2;
+    if(/top opportunity|verdict/.test(t)){ m.verdicts_today=(m.verdicts_today||0)+3; m.top_score=weightedScore(DATA.top.scores).toFixed(1); }
+  }
+}
 
 async function runBriefing(){
   if(state.briefingActive){toast("Briefing already running.");return}
@@ -970,12 +1259,24 @@ async function runBriefing(){
     if(lit) litCard(lit);
     if(done) doneCard(done);
     if(task) state.agentTasks[a]=task;
+    // Update the agent's detailed dossier state
+    if(state.agentState[a]){
+      state.agentState[a].current = task ? `Right now: ${task}.` : m;
+      bumpAgentMetrics(a, m);
+      if(state.openDossierCode===a) renderDossier(a);
+    }
     log(a,m,a==="BOSS"?"sys":"");
     await wait(d);
     setAgent(a,"DONE");
   }
   // After briefing, reset each agent's task to a background-monitoring statement
-  AGENTS.forEach(a=>{ state.agentTasks[a[0]] = pickBg(a[0]); });
+  AGENTS.forEach(a=>{
+    state.agentTasks[a[0]] = pickBg(a[0]);
+    if(state.agentState[a[0]]){
+      state.agentState[a[0]].current = AGENT_BG_DETAILS[a[0]] || pickBg(a[0]);
+    }
+  });
+  if(state.openDossierCode) renderDossier(state.openDossierCode);
   state.brainBoost=1;
   state.hasRunToday=true;
   state.briefingActive=false;
