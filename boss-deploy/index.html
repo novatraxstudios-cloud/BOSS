@@ -241,6 +241,7 @@
   .verdict h2{margin:10px 0 6px;font-size:28px;line-height:1;letter-spacing:.08em;text-transform:uppercase}
   .verdict p{margin:0;color:var(--dim);line-height:1.45;font-size:13px}
   .badge{display:inline-block;margin-top:12px;padding:6px 10px;background:var(--ember);color:#190b00;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:900;letter-spacing:.16em}
+  .badge:hover{transform:scale(1.04);filter:brightness(1.1)}
   .badge.b-build{background:var(--ok);color:#031810}
   .badge.b-watch{background:var(--line);color:#031018}
   .badge.b-kill{background:var(--danger);color:#fff}
@@ -957,10 +958,10 @@
       <div class="eyebrow">B.O.S.S. verdict</div>
       <h2 id="topName">Quiet Hours</h2>
       <p id="topLine">Auto-mute specific people and apps during declared deep-work windows, then signal availability without Slack drama.</p>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px">
-        <span class="badge" id="topVerdict">VALIDATE</span>
-        <button class="approve-btn" id="topApproveBtn" type="button" onclick="approveCurrentTop(this)" style="padding:8px 14px;font-size:10px">▶ Approve for Product</button>
+      <div style="margin-top:14px">
+        <span class="badge" id="topVerdict" onclick="openTopDetail()" title="Click for full briefing detail" style="cursor:pointer;display:inline-block;transition:transform .12s">VALIDATE</span>
       </div>
+      <button class="approve-btn" id="topApproveBtn" type="button" onclick="approveCurrentTop(this)" style="padding:10px 14px;font-size:11px;margin-top:12px;width:100%;text-align:center">▶ Approve for Product</button>
     </section>
 
     <section class="metrics">
@@ -3628,6 +3629,31 @@ async function approveBriefing(briefingId, name, btn){
   }catch(e){
     toast("Approval failed: " + e.message);
     if(btn){ btn.disabled = false; btn.textContent = "▶ Approve for Product"; }
+  }
+}
+
+/* Click the verdict badge → opens the detail modal for today's top briefing. */
+async function openTopDetail(){
+  try{
+    // Ensure the board is loaded so openDetail() has data to work with
+    if(!state.board || !state.board.length){
+      await loadBoard();
+    }
+    const rows = state.board || [];
+    if(!rows.length){
+      toast("No briefings on record yet, King Meka.");
+      return;
+    }
+    // Prefer the row that matches our live briefing; else use the most recent
+    let idx = -1;
+    if(state.liveRowId){
+      idx = rows.findIndex(r => r.id === state.liveRowId);
+    }
+    if(idx < 0) idx = 0;
+    state.boardFiltered = rows;
+    openDetail(idx);
+  }catch(e){
+    toast("Couldn't open detail: " + e.message);
   }
 }
 
