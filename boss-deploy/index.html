@@ -1384,14 +1384,15 @@ function renderBoard(){
   $("ctKill").textContent     = state.boardStats?.kill || 0;
   $("boardSub").textContent   = `${all.length} briefings · ${state.boardStats?.build||0} BUILD · ${state.boardStats?.validate||0} VALIDATE · ${state.boardStats?.watch||0} WATCH · ${state.boardStats?.kill||0} KILL`;
 
-  // Filter + search
+  // Filter + search — the briefing payload is nested: payload.briefing.{top,ranking,kills,...}
   const filtered = all.filter(b => {
     if (filter !== "ALL" && (b.top_verdict||"").toUpperCase() !== filter) return false;
     if (!search) return true;
+    const br = b.payload?.briefing || {};
     const hay = [
-      b.top_name, b.vertical, b.payload?.top?.one_line, b.payload?.executive_summary,
-      ...(b.payload?.ranking||[]).map(r=>r.name+" "+r.line),
-      ...(b.payload?.kills||[]).map(k=>k.name)
+      b.top_name, b.vertical, br.top?.one_line, br.top?.pain, br.executive_summary,
+      ...(br.ranking||[]).map(r=>r.name+" "+r.line),
+      ...(br.kills||[]).map(k=>k.name+" "+k.why)
     ].join(" ").toLowerCase();
     return hay.includes(search);
   });
@@ -1405,7 +1406,7 @@ function renderBoard(){
     const verdict = (b.top_verdict||"WATCH").toUpperCase();
     const date = new Date(b.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
     const score = Number(b.top_score||0).toFixed(1);
-    const oneLine = (b.payload?.top?.one_line || "").slice(0,160);
+    const oneLine = (b.payload?.briefing?.top?.one_line || "").slice(0,160);
     return `<article class="board-card v-${verdict}" onclick="openDetail(${i})" data-idx="${i}">
       <div class="top-row"><span class="date">${date}</span><span>${b.vertical||""}</span></div>
       <div class="name">${escapeHtml(b.top_name||"Untitled")}</div>
@@ -1428,11 +1429,15 @@ function escapeHtml(s){
 function openDetail(idx){
   const b = (state.boardFiltered || state.board)[idx];
   if(!b) return;
+  // Payload structure: { ok, vertical, sources, briefing:{ top, ranking, kills, agent_reports, app_store_reviews, executive_summary } }
   const p = b.payload || {};
-  const top = p.top || {};
-  const ranking = p.ranking || [];
-  const kills = p.kills || [];
-  const ar = p.agent_reports || {};
+  const br = p.briefing || {};
+  const top = br.top || {};
+  const ranking = br.ranking || [];
+  const kills = br.kills || [];
+  const ar = br.agent_reports || {};
+  const execSummary = br.executive_summary || "";
+  const appStoreReviews = br.app_store_reviews || p.app_store_reviews || [];
   const verdict = (b.top_verdict || top.verdict || "WATCH").toUpperCase();
   const date = new Date(b.date).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
 
@@ -1447,7 +1452,7 @@ function openDetail(idx){
   $("detailBody").innerHTML = `
     <section class="detail-section">
       <div class="detail-eyebrow">Executive Summary</div>
-      <div style="color:var(--ink);line-height:1.55;font-size:13px">${escapeHtml(p.executive_summary||"—")}</div>
+      <div style="color:var(--ink);line-height:1.55;font-size:13px">${escapeHtml(execSummary || "—")}</div>
     </section>
 
     <section class="detail-section">
@@ -1505,9 +1510,9 @@ function openDetail(idx){
       <div class="detail-row"><div class="lbl">Kill criteria</div><div class="val" style="color:var(--danger)">${escapeHtml(vibe.kill_criteria||"—")}</div></div>
     </section>` : ""}
 
-    ${(p.app_store_reviews||[]).length ? `<section class="detail-section">
+    ${appStoreReviews.length ? `<section class="detail-section">
       <div class="detail-eyebrow">App Store Reviews Scraped (primary-source pain signals)</div>
-      ${(p.app_store_reviews||[]).map(pack=>`<div style="padding:5px 0;font-size:12px"><b style="color:#fff">${escapeHtml(pack.app_title||pack.app_id)}</b> · ${pack.negative_review_count} negative reviews</div>${(pack.reviews||[]).slice(0,3).map(rv=>`<div style="font-size:11px;color:var(--dim);padding:3px 0 3px 14px">${"★".repeat(rv.stars)}${"☆".repeat(5-rv.stars)} ${escapeHtml(rv.title||"")} — "${escapeHtml((rv.body||"").slice(0,180))}"</div>`).join("")}`).join("")}
+      ${appStoreReviews.map(pack=>`<div style="padding:5px 0;font-size:12px"><b style="color:#fff">${escapeHtml(pack.app_title||pack.app_id)}</b> · ${pack.negative_review_count} negative reviews</div>${(pack.reviews||[]).slice(0,3).map(rv=>`<div style="font-size:11px;color:var(--dim);padding:3px 0 3px 14px">${"★".repeat(rv.stars)}${"☆".repeat(5-rv.stars)} ${escapeHtml(rv.title||"")} — "${escapeHtml((rv.body||"").slice(0,180))}"</div>`).join("")}`).join("")}
     </section>` : ""}
   `;
   $("detailBg").classList.add("open");
