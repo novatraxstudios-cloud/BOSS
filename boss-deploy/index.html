@@ -304,6 +304,99 @@
     .doss-metrics{grid-template-columns:repeat(2,1fr)}
   }
 
+  /* ===== IDEAS BOARD ===== */
+  .board-bg{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(8px);z-index:40;display:none;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
+  .board-bg.open{display:flex}
+  .board{
+    width:min(1280px,100%); margin:auto;
+    border:1px solid var(--line);
+    background:linear-gradient(145deg,rgba(28,232,255,.06),transparent 32%),var(--glass);
+    box-shadow:0 32px 100px rgba(0,0,0,.65),inset 0 0 40px rgba(28,232,255,.04);
+    clip-path:polygon(0 18px,18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%);
+    display:flex;flex-direction:column;min-height:60vh;
+  }
+  .board header{
+    padding:16px 22px;border-bottom:1px solid var(--line-soft);
+    display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;
+    background:linear-gradient(90deg,rgba(28,232,255,.08),transparent 60%);
+  }
+  .board header h2{margin:0;font-family:Inter;font-weight:900;font-size:20px;letter-spacing:.18em;text-transform:uppercase;color:#fff}
+  .board header .sub{font-family:ui-monospace,monospace;color:var(--dim);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin-top:3px}
+  .board .toolbar{padding:14px 22px;border-bottom:1px solid rgba(28,232,255,.12);display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center}
+  .board .search{background:rgba(3,14,25,.7);border:1px solid var(--line-soft);color:var(--ink);padding:10px 14px;font-family:ui-monospace,monospace;font-size:12px;outline:none;width:100%;max-width:400px}
+  .board .search:focus{border-color:var(--line);box-shadow:0 0 12px rgba(28,232,255,.25)}
+  .board .filters{display:flex;gap:6px;flex-wrap:wrap}
+  .board .pill{
+    border:1px solid var(--line-soft);background:rgba(3,14,25,.55);color:var(--ink);
+    padding:7px 12px;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.18em;
+    text-transform:uppercase;cursor:pointer;transition:all .15s;
+    clip-path:polygon(0 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%);
+  }
+  .board .pill:hover{border-color:var(--line);color:#fff}
+  .board .pill.active{background:var(--line);color:#021018;border-color:var(--line);font-weight:900}
+  .board .pill .ct{margin-left:6px;color:var(--muted);font-weight:400}
+  .board .pill.active .ct{color:rgba(2,16,24,.6)}
+  .board .pill[data-verdict="BUILD"].active{background:var(--ok)}
+  .board .pill[data-verdict="VALIDATE"].active{background:var(--ember);color:#1a0a00}
+  .board .pill[data-verdict="WATCH"].active{background:var(--line)}
+  .board .pill[data-verdict="KILL"].active{background:var(--danger);color:#fff}
+
+  .board-grid{padding:18px 22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;max-height:72vh;overflow-y:auto}
+  .board-grid::-webkit-scrollbar{width:6px}.board-grid::-webkit-scrollbar-thumb{background:var(--line-soft)}
+  .board-card{
+    border:1px solid rgba(28,232,255,.18);
+    background:linear-gradient(145deg,rgba(28,232,255,.06),rgba(3,14,25,.7));
+    padding:14px;cursor:pointer;transition:all .15s;
+    clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%);
+    position:relative;display:flex;flex-direction:column;gap:8px;
+  }
+  .board-card:hover{border-color:var(--line);box-shadow:0 0 22px rgba(28,232,255,.18);transform:translateY(-2px)}
+  .board-card.v-BUILD{border-color:rgba(77,255,194,.4)}
+  .board-card.v-VALIDATE{border-color:rgba(255,179,77,.4)}
+  .board-card.v-WATCH{border-color:rgba(28,232,255,.3)}
+  .board-card.v-KILL{border-color:rgba(255,61,103,.3);opacity:.6}
+  .board-card .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+  .board-card .top-row .date{color:var(--line)}
+  .board-card .name{font-family:Inter;font-weight:900;font-size:15px;color:#fff;line-height:1.2}
+  .board-card .one-line{font-size:12px;color:var(--dim);line-height:1.45;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+  .board-card .bottom-row{display:flex;justify-content:space-between;align-items:center;margin-top:auto;font-family:ui-monospace,monospace;font-size:11px}
+  .board-card .verdict-pill{padding:3px 9px;font-weight:900;font-size:10px;letter-spacing:.2em}
+  .board-card .verdict-pill.BUILD{background:var(--ok);color:#031810}
+  .board-card .verdict-pill.VALIDATE{background:var(--ember);color:#1a0a00}
+  .board-card .verdict-pill.WATCH{background:var(--line);color:#021018}
+  .board-card .verdict-pill.KILL{background:var(--danger);color:#fff}
+  .board-card .score{color:#fff;font-weight:700}
+  .board-empty{padding:60px 22px;text-align:center;color:var(--muted);font-family:ui-monospace,monospace;font-size:13px;letter-spacing:.12em}
+
+  /* Detail modal — re-uses dossier styles but wider */
+  .detail-bg{position:fixed;inset:0;background:rgba(0,0,0,.84);backdrop-filter:blur(8px);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
+  .detail-bg.open{display:flex}
+  .detail{
+    width:min(900px,100%);
+    border:1px solid var(--line);
+    background:linear-gradient(145deg,rgba(28,232,255,.07),transparent 32%),var(--glass);
+    box-shadow:0 32px 100px rgba(0,0,0,.65),0 0 80px rgba(28,232,255,.18);
+    clip-path:polygon(0 18px,18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%);
+    display:flex;flex-direction:column;margin:auto;
+  }
+  .detail header{padding:18px 22px;border-bottom:1px solid var(--line-soft);display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;background:linear-gradient(90deg,rgba(28,232,255,.08),transparent 60%)}
+  .detail header h2{margin:0;font-family:Inter;font-weight:900;font-size:20px;letter-spacing:.06em;text-transform:uppercase;color:#fff}
+  .detail header .meta{font-family:ui-monospace,monospace;font-size:11px;color:var(--dim);letter-spacing:.15em;text-transform:uppercase;margin-top:4px}
+  .detail .body{padding:20px 22px;display:grid;gap:14px;max-height:76vh;overflow-y:auto}
+  .detail .body::-webkit-scrollbar{width:6px}.detail .body::-webkit-scrollbar-thumb{background:var(--line-soft)}
+  .detail-section{border:1px solid rgba(28,232,255,.16);background:rgba(2,12,23,.45);padding:14px;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%)}
+  .detail-eyebrow{font-family:ui-monospace,monospace;color:var(--line);font-size:10px;letter-spacing:.22em;text-transform:uppercase;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .detail-eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--line);box-shadow:0 0 8px var(--line)}
+  .detail-row{display:grid;grid-template-columns:140px 1fr;gap:14px;padding:5px 0;font-size:12px;line-height:1.5}
+  .detail-row .lbl{color:var(--muted);font-family:ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;font-size:10px}
+  .detail-row .val{color:var(--ink)}
+  .detail-rank{display:grid;grid-template-columns:24px 1fr auto auto;gap:10px;padding:8px 0;border-bottom:1px dashed rgba(28,232,255,.1);font-size:12px;align-items:center}
+  .detail-rank .rk{color:var(--ember);font-family:ui-monospace,monospace;font-weight:900}
+  .detail-source{display:block;color:var(--line);font-family:ui-monospace,monospace;font-size:11px;text-decoration:none;padding:3px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .detail-source:hover{text-decoration:underline}
+  .detail-kill{padding:6px 0;border-bottom:1px dashed rgba(255,61,103,.12);font-size:12px}
+  .detail-kill b{color:var(--danger);display:block;font-family:ui-monospace,monospace;letter-spacing:.1em;font-size:10px}
+
   @keyframes worldGlow{50%{filter:saturate(1.25) brightness(1.08)}}
   @keyframes gridDrift{to{background-position:64px 64px,64px 64px,320px 320px}}
   @keyframes panelSweep{0%,55%{transform:translateX(-130%)}78%,100%{transform:translateX(130%)}}
@@ -368,6 +461,7 @@
     <button class="rail-button" type="button" data-target="scan"><b>02</b>Scan</button>
     <button class="rail-button" type="button" data-target="kill"><b>03</b>Kill</button>
     <button class="rail-button" type="button" data-target="mail"><b>04</b>Mail</button>
+    <button class="rail-button" type="button" onclick="openBoard()" title="Ideas Board"><b>05</b>Board</button>
     <div class="rail-spacer"></div>
     <div class="rail-meter" title="Signal integrity"><div id="meterFill" style="position:absolute;left:0;right:0;bottom:0;height:68%;background:linear-gradient(180deg,var(--line),var(--ok));box-shadow:0 0 16px var(--line);transition:height .4s"></div></div>
   </aside>
@@ -464,6 +558,49 @@
     </section>
   </aside>
 </main>
+
+<!-- ===== Ideas Board Overlay ===== -->
+<div class="board-bg" id="boardBg" onclick="if(event.target===this) closeBoard()">
+  <div class="board">
+    <header>
+      <div>
+        <h2>Ideas Board</h2>
+        <div class="sub" id="boardSub">Every briefing BOSS has ever produced</div>
+      </div>
+      <div></div>
+      <button class="close" type="button" onclick="closeBoard()" style="background:transparent;border:1px solid var(--line-soft);color:var(--ink);width:36px;height:36px;display:grid;place-items:center;cursor:pointer;clip-path:polygon(0 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%)">✕</button>
+    </header>
+    <div class="toolbar">
+      <input class="search" id="boardSearch" type="text" placeholder="Search by idea name, vertical, or any keyword..." oninput="renderBoard()" />
+      <div class="filters" id="boardFilters">
+        <button class="pill active" data-verdict="ALL" onclick="setBoardFilter('ALL')">All <span class="ct" id="ctAll">0</span></button>
+        <button class="pill" data-verdict="BUILD" onclick="setBoardFilter('BUILD')">Build <span class="ct" id="ctBuild">0</span></button>
+        <button class="pill" data-verdict="VALIDATE" onclick="setBoardFilter('VALIDATE')">Validate <span class="ct" id="ctValidate">0</span></button>
+        <button class="pill" data-verdict="WATCH" onclick="setBoardFilter('WATCH')">Watch <span class="ct" id="ctWatch">0</span></button>
+        <button class="pill" data-verdict="KILL" onclick="setBoardFilter('KILL')">Kill <span class="ct" id="ctKill">0</span></button>
+      </div>
+    </div>
+    <div class="board-grid" id="boardGrid">
+      <div class="board-empty">Loading briefings from Supabase...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Briefing Detail Modal (opened when a board card is clicked) ===== -->
+<div class="detail-bg" id="detailBg" onclick="if(event.target===this) closeDetail()">
+  <div class="detail">
+    <header>
+      <div>
+        <h2 id="detailName">Idea</h2>
+        <div class="meta" id="detailMeta">verdict · date · vertical</div>
+      </div>
+      <button class="close" type="button" onclick="closeDetail()" style="background:transparent;border:1px solid var(--line-soft);color:var(--ink);width:36px;height:36px;display:grid;place-items:center;cursor:pointer;clip-path:polygon(0 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%)">✕</button>
+    </header>
+    <div class="body" id="detailBody">
+      <!-- populated by openDetail() -->
+    </div>
+  </div>
+</div>
 
 <!-- ===== Agent Dossier Modal ===== -->
 <div class="dossier-bg" id="dossierBg" onclick="if(event.target===this) closeDossier()">
@@ -1195,6 +1332,190 @@ function doneCard(name){
   if(el){el.classList.remove("lit");el.classList.add("done")}
 }
 
+/* ---------- IDEAS BOARD ----------
+   Full briefing history pulled from Supabase via /api/board. */
+async function openBoard(){
+  $("boardBg").classList.add("open");
+  if(!state.board){
+    await loadBoard();
+  } else {
+    renderBoard();
+  }
+}
+function closeBoard(){
+  $("boardBg").classList.remove("open");
+}
+
+async function loadBoard(){
+  try{
+    const r = await fetch("/api/board?limit=100", { cache:"no-store" });
+    if(!r.ok) throw new Error("board "+r.status);
+    const j = await r.json();
+    state.board = j.board || [];
+    state.boardStats = j.stats || { total:0, build:0, validate:0, watch:0, kill:0 };
+    state.boardFilter = "ALL";
+    renderBoard();
+    log("TRON",`Ideas Board loaded · ${state.board.length} past briefings.`,"");
+  }catch(e){
+    state.board = [];
+    $("boardGrid").innerHTML = `<div class="board-empty">Couldn't load: ${e.message}</div>`;
+  }
+}
+
+function setBoardFilter(verdict){
+  state.boardFilter = verdict;
+  document.querySelectorAll("#boardFilters .pill").forEach(p=>{
+    p.classList.toggle("active", p.dataset.verdict === verdict);
+  });
+  renderBoard();
+}
+
+function renderBoard(){
+  const grid = $("boardGrid");
+  const search = ($("boardSearch")?.value || "").toLowerCase().trim();
+  const filter = state.boardFilter || "ALL";
+  const all = state.board || [];
+
+  // Update counts
+  $("ctAll").textContent      = all.length;
+  $("ctBuild").textContent    = state.boardStats?.build || 0;
+  $("ctValidate").textContent = state.boardStats?.validate || 0;
+  $("ctWatch").textContent    = state.boardStats?.watch || 0;
+  $("ctKill").textContent     = state.boardStats?.kill || 0;
+  $("boardSub").textContent   = `${all.length} briefings · ${state.boardStats?.build||0} BUILD · ${state.boardStats?.validate||0} VALIDATE · ${state.boardStats?.watch||0} WATCH · ${state.boardStats?.kill||0} KILL`;
+
+  // Filter + search
+  const filtered = all.filter(b => {
+    if (filter !== "ALL" && (b.top_verdict||"").toUpperCase() !== filter) return false;
+    if (!search) return true;
+    const hay = [
+      b.top_name, b.vertical, b.payload?.top?.one_line, b.payload?.executive_summary,
+      ...(b.payload?.ranking||[]).map(r=>r.name+" "+r.line),
+      ...(b.payload?.kills||[]).map(k=>k.name)
+    ].join(" ").toLowerCase();
+    return hay.includes(search);
+  });
+
+  if (filtered.length === 0){
+    grid.innerHTML = `<div class="board-empty">Nothing matches. Adjust your filter or search.</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map((b,i) => {
+    const verdict = (b.top_verdict||"WATCH").toUpperCase();
+    const date = new Date(b.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+    const score = Number(b.top_score||0).toFixed(1);
+    const oneLine = (b.payload?.top?.one_line || "").slice(0,160);
+    return `<article class="board-card v-${verdict}" onclick="openDetail(${i})" data-idx="${i}">
+      <div class="top-row"><span class="date">${date}</span><span>${b.vertical||""}</span></div>
+      <div class="name">${escapeHtml(b.top_name||"Untitled")}</div>
+      <div class="one-line">${escapeHtml(oneLine)}</div>
+      <div class="bottom-row">
+        <span class="verdict-pill ${verdict}">${verdict}</span>
+        <span class="score">${score} / 10</span>
+      </div>
+    </article>`;
+  }).join("");
+  // Store filtered order so openDetail(idx) can reach the right row
+  state.boardFiltered = filtered;
+}
+
+function escapeHtml(s){
+  return String(s||"").replace(/[<>&"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"})[c]);
+}
+
+/* ---------- DETAIL MODAL ---------- */
+function openDetail(idx){
+  const b = (state.boardFiltered || state.board)[idx];
+  if(!b) return;
+  const p = b.payload || {};
+  const top = p.top || {};
+  const ranking = p.ranking || [];
+  const kills = p.kills || [];
+  const ar = p.agent_reports || {};
+  const verdict = (b.top_verdict || top.verdict || "WATCH").toUpperCase();
+  const date = new Date(b.date).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+
+  $("detailName").textContent = b.top_name || "Untitled";
+  $("detailMeta").innerHTML = `<span class="verdict-pill ${verdict}" style="padding:3px 9px;font-weight:900;font-size:10px;letter-spacing:.2em;background:${verdict==="BUILD"?"var(--ok)":verdict==="VALIDATE"?"var(--ember)":verdict==="WATCH"?"var(--line)":"var(--danger)"};color:${verdict==="BUILD"?"#031810":verdict==="VALIDATE"?"#1a0a00":verdict==="WATCH"?"#021018":"#fff"}">${verdict}</span> · ${date} · ${b.vertical||""} · score ${Number(b.top_score||0).toFixed(1)}/10`;
+
+  const cash = (ar.cash||[]).find(c=>c.name===top.name) || (ar.cash||[])[0] || {};
+  const blue = (ar.blue||[]).find(c=>c.name===top.name) || (ar.blue||[])[0] || {};
+  const vibe = (ar.vibe||[]).find(c=>c.name===top.name) || (ar.vibe||[])[0] || {};
+  const sniper = (ar.sniper||[]).find(c=>c.name===top.name) || (ar.sniper||[])[0] || {};
+
+  $("detailBody").innerHTML = `
+    <section class="detail-section">
+      <div class="detail-eyebrow">Executive Summary</div>
+      <div style="color:var(--ink);line-height:1.55;font-size:13px">${escapeHtml(p.executive_summary||"—")}</div>
+    </section>
+
+    <section class="detail-section">
+      <div class="detail-eyebrow">Top Opportunity</div>
+      <div class="detail-row"><div class="lbl">One line</div><div class="val">${escapeHtml(top.one_line||"—")}</div></div>
+      <div class="detail-row"><div class="lbl">Target</div><div class="val">${escapeHtml(top.target_user||"—")}</div></div>
+      <div class="detail-row"><div class="lbl">Pain</div><div class="val">${escapeHtml(top.pain||"—")}</div></div>
+      <div class="detail-row"><div class="lbl">Evidence</div><div class="val">${escapeHtml(top.evidence||"—")}</div></div>
+      <div class="detail-row"><div class="lbl">Monetization</div><div class="val">${escapeHtml(top.monetization||"—")}</div></div>
+      <div class="detail-row"><div class="lbl">MVP</div><div class="val">${escapeHtml(top.mvp||"—")}</div></div>
+      <div class="detail-row"><div class="lbl">Sources</div><div class="val">${(top.sources||[]).map(u=>`<a class="detail-source" href="${escapeHtml(u)}" target="_blank" rel="noopener">${escapeHtml(u)}</a>`).join("") || "—"}</div></div>
+    </section>
+
+    ${ranking.length ? `<section class="detail-section">
+      <div class="detail-eyebrow">Top 3 Ranking</div>
+      ${ranking.map(r=>`<div class="detail-rank"><span class="rk">#${r.rank}</span><span style="color:#fff">${escapeHtml(r.name||"")}</span><span style="color:var(--line);font-family:ui-monospace,monospace">${Number(r.score||0).toFixed(1)}/10</span><span class="verdict-pill ${(r.verdict||"").toUpperCase()}" style="padding:2px 7px;font-size:9px;letter-spacing:.16em;font-family:ui-monospace,monospace;font-weight:900;background:${r.verdict==="BUILD"?"var(--ok)":r.verdict==="VALIDATE"?"var(--ember)":r.verdict==="WATCH"?"var(--line)":"var(--danger)"};color:${r.verdict==="BUILD"?"#031810":r.verdict==="VALIDATE"?"#1a0a00":r.verdict==="WATCH"?"#021018":"#fff"}">${r.verdict||""}</span></div>${r.line?`<div style="font-size:12px;color:var(--dim);padding:0 0 6px 34px">${escapeHtml(r.line)}</div>`:""}`).join("")}
+    </section>` : ""}
+
+    ${kills.length ? `<section class="detail-section">
+      <div class="detail-eyebrow" style="color:var(--danger)">Kill List</div>
+      ${kills.map(k=>`<div class="detail-kill"><b>✕ ${escapeHtml(k.name||"")}</b><span style="color:var(--dim)">${escapeHtml(k.why||"")}</span></div>`).join("")}
+    </section>` : ""}
+
+    ${sniper.competitors ? `<section class="detail-section">
+      <div class="detail-eyebrow">Sniper · Competitor Weakness</div>
+      ${(sniper.competitors||[]).map(c=>`<div style="padding:5px 0;font-size:12px"><b style="color:#fff">${escapeHtml(c.name||"")}</b> <span style="color:var(--dim)">— ${escapeHtml(c.weakness||"")}</span></div>`).join("")}
+      ${sniper.market_gap?`<div style="margin-top:8px;color:var(--line);font-size:12px"><b>Gap:</b> ${escapeHtml(sniper.market_gap)}</div>`:""}
+      ${(sniper.review_quotes||[]).length?`<div style="margin-top:8px;font-size:11px;color:var(--dim);font-style:italic">Review quotes: ${sniper.review_quotes.map(q=>`"${escapeHtml(q)}"`).join("  ·  ")}</div>`:""}
+    </section>` : ""}
+
+    ${blue.must_have ? `<section class="detail-section">
+      <div class="detail-eyebrow">Blue · Ugly MVP</div>
+      <div class="detail-row"><div class="lbl">Must have</div><div class="val">${(blue.must_have||[]).join(", ")}</div></div>
+      <div class="detail-row"><div class="lbl">Avoid</div><div class="val">${(blue.features_to_avoid||[]).join(", ")}</div></div>
+      <div class="detail-row"><div class="lbl">Screens</div><div class="val">${(blue.screens||[]).join(" → ")}</div></div>
+      <div class="detail-row"><div class="lbl">Stack</div><div class="val">${escapeHtml(blue.stack_suggestion||"—")}</div></div>
+      <div class="detail-row"><div class="lbl">7-day version</div><div class="val">${escapeHtml(blue.seven_day_version||"—")}</div></div>
+      <div class="detail-row"><div class="lbl">30-day version</div><div class="val">${escapeHtml(blue.thirty_day_version||"—")}</div></div>
+    </section>` : ""}
+
+    ${cash.pricing_tiers ? `<section class="detail-section">
+      <div class="detail-eyebrow">Cash · Pricing</div>
+      ${(cash.pricing_tiers||[]).map(t=>`<div class="detail-row"><div class="lbl">${escapeHtml(t.tier||"")} ${escapeHtml(t.price||"")}</div><div class="val">${escapeHtml(t.includes||"")}</div></div>`).join("")}
+      <div class="detail-row"><div class="lbl">Upside</div><div class="val">${escapeHtml(cash.revenue_upside||"—")}</div></div>
+      <div class="detail-row"><div class="lbl">First offer</div><div class="val">${escapeHtml(cash.best_first_offer||"—")}</div></div>
+    </section>` : ""}
+
+    ${vibe.landing_headline ? `<section class="detail-section">
+      <div class="detail-eyebrow">Vibe · 7-Day Validation</div>
+      <div class="detail-row"><div class="lbl">Landing headline</div><div class="val" style="color:#fff;font-weight:700">"${escapeHtml(vibe.landing_headline||"")}"</div></div>
+      <div class="detail-row"><div class="lbl">Waitlist copy</div><div class="val">${escapeHtml(vibe.waitlist_copy||"—")}</div></div>
+      <div class="detail-row"><div class="lbl">TikTok hooks</div><div class="val">${(vibe.tiktok_hooks||[]).map(h=>`"${escapeHtml(h)}"`).join(" · ")}</div></div>
+      <div class="detail-row"><div class="lbl">Reddit posts</div><div class="val">${(vibe.reddit_posts||[]).map(r=>`${escapeHtml(r.subreddit||"")}: "${escapeHtml(r.title||"")}"`).join(" · ")}</div></div>
+      <div class="detail-row"><div class="lbl">Success</div><div class="val" style="color:var(--ok)">${escapeHtml(vibe.success_criteria||"—")}</div></div>
+      <div class="detail-row"><div class="lbl">Kill criteria</div><div class="val" style="color:var(--danger)">${escapeHtml(vibe.kill_criteria||"—")}</div></div>
+    </section>` : ""}
+
+    ${(p.app_store_reviews||[]).length ? `<section class="detail-section">
+      <div class="detail-eyebrow">App Store Reviews Scraped (primary-source pain signals)</div>
+      ${(p.app_store_reviews||[]).map(pack=>`<div style="padding:5px 0;font-size:12px"><b style="color:#fff">${escapeHtml(pack.app_title||pack.app_id)}</b> · ${pack.negative_review_count} negative reviews</div>${(pack.reviews||[]).slice(0,3).map(rv=>`<div style="font-size:11px;color:var(--dim);padding:3px 0 3px 14px">${"★".repeat(rv.stars)}${"☆".repeat(5-rv.stars)} ${escapeHtml(rv.title||"")} — "${escapeHtml((rv.body||"").slice(0,180))}"</div>`).join("")}`).join("")}
+    </section>` : ""}
+  `;
+  $("detailBg").classList.add("open");
+}
+function closeDetail(){
+  $("detailBg").classList.remove("open");
+}
+
 /* ---------- SHELF FETCH ----------
    Pulls the list of previously-pitched (VALIDATE/WATCH) ideas from Supabase
    so BOSS knows what we've already looked at and won't repeat himself. */
@@ -1857,6 +2178,13 @@ async function routeIntent(text){
     const tz = state.cfg.tz || "America/Chicago";
     const t = new Date().toLocaleString("en-US", { timeZone: tz, weekday:"long", hour:"numeric", minute:"2-digit", hour12:true });
     await say(`It's ${t} for you, King Meka.`);
+    return;
+  }
+
+  // Open the Ideas Board overlay
+  if(/\b(ideas board|open (the )?board|show (me )?(the )?board|venture board)\b/.test(text)){
+    openBoard();
+    await say(`Opening the ideas board, King Meka. ${state.boardStats?.total||state.board?.length||"some"} briefings on file.`);
     return;
   }
 
