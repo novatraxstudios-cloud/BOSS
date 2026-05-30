@@ -1,0 +1,1667 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>B.O.S.S. Command Nexus</title>
+<style>
+  :root{
+    --void:#02040b;
+    --deck:#07101c;
+    --deck-2:#0b1725;
+    --line:#1ce8ff;
+    --line-soft:rgba(28,232,255,.28);
+    --ember:#ffb34d;
+    --danger:#ff3d67;
+    --ok:#4dffc2;
+    --ink:#e6fbff;
+    --dim:#7f9daf;
+    --muted:#425c6d;
+    --glass:rgba(5,18,31,.72);
+    --glass-2:rgba(8,30,50,.52);
+    --shadow:0 24px 90px rgba(0,0,0,.45);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--void);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-x:hidden}
+  body{
+    background:
+      radial-gradient(circle at 50% 24%, rgba(28,232,255,.18), transparent 22rem),
+      radial-gradient(circle at 82% 18%, rgba(255,179,77,.11), transparent 18rem),
+      radial-gradient(circle at 16% 74%, rgba(77,255,194,.09), transparent 20rem),
+      linear-gradient(145deg,#02040b 0%,#07101c 48%,#010208 100%);
+    animation:worldGlow 9s ease-in-out infinite;
+  }
+  body::before,
+  body::after{content:"";position:fixed;inset:0;pointer-events:none}
+  body::before{
+    z-index:0;
+    background:
+      linear-gradient(rgba(28,232,255,.08) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(28,232,255,.08) 1px,transparent 1px),
+      linear-gradient(115deg,transparent 0 47%,rgba(28,232,255,.08) 47.2% 47.5%,transparent 47.7%);
+    background-size:64px 64px,64px 64px,320px 320px;
+    mask-image:radial-gradient(circle at center,#000 18%,rgba(0,0,0,.75) 44%,transparent 86%);
+    animation:gridDrift 18s linear infinite;
+  }
+  body::after{
+    z-index:4;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 4px);
+    mix-blend-mode:overlay;
+    opacity:.5;
+  }
+
+  button,input,select{font:inherit}
+  button{cursor:pointer}
+
+  .app{position:relative;z-index:2;min-height:100vh;padding:18px;display:grid;grid-template-columns:86px minmax(0,1fr) 350px;gap:16px}
+  .rail,.stage,.dossier,.card,.drawer{
+    border:1px solid var(--line-soft);
+    background:linear-gradient(145deg,rgba(28,232,255,.07),transparent 32%),var(--glass);
+    box-shadow:var(--shadow),inset 0 0 28px rgba(28,232,255,.04);
+    backdrop-filter:blur(14px);
+    position:relative;
+  }
+  .rail::after,.stage::after,.dossier::after,.card::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    background:linear-gradient(115deg,transparent 0 36%,rgba(255,255,255,.13) 44%,transparent 52% 100%);
+    transform:translateX(-120%);
+    animation:panelSweep 7s ease-in-out infinite;
+    opacity:.22;
+  }
+  .rail,.stage,.dossier,.card{clip-path:polygon(0 14px,14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%)}
+
+  .rail{min-height:calc(100vh - 36px);padding:12px 9px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .reactor-mark{width:56px;height:56px;border-radius:50%;position:relative;display:grid;place-items:center;background:conic-gradient(from 0deg,var(--line),transparent 18%,var(--ember),transparent 42%,var(--line),transparent 70%,var(--ok));box-shadow:0 0 28px rgba(28,232,255,.8);animation:markSpin 8s linear infinite}
+  .reactor-mark::before{content:"";width:36px;height:36px;border-radius:50%;background:radial-gradient(circle,#fff 0 24%,var(--line) 25% 52%,#063349 53% 100%);box-shadow:inset 0 0 10px #fff}
+  .rail-button{width:58px;height:58px;border:1px solid rgba(28,232,255,.22);background:rgba(3,14,25,.76);color:var(--ink);display:grid;place-items:center;gap:2px;text-transform:uppercase;font-size:10px;letter-spacing:.12em;clip-path:polygon(0 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%);transition:all .15s}
+  .rail-button:hover{border-color:var(--line);color:#fff}
+  .rail-button b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--line);font-size:12px}
+  .rail-button.active{border-color:var(--ember);box-shadow:0 0 24px rgba(255,179,77,.24);color:#fff}
+  .rail-button.active::after{content:"";position:absolute;inset:7px;border:1px solid rgba(255,179,77,.35);animation:microPulse 1.7s ease-in-out infinite}
+  .rail-spacer{flex:1}
+  .rail-meter{height:120px;width:10px;border:1px solid rgba(28,232,255,.25);position:relative;overflow:hidden;background:rgba(28,232,255,.04)}
+  .rail-meter::after{content:"";position:absolute;left:0;right:0;bottom:0;height:68%;background:linear-gradient(180deg,var(--line),var(--ok));box-shadow:0 0 16px var(--line);transition:height .4s}
+
+  .stage{min-width:0;min-height:calc(100vh - 36px);padding:18px;display:grid;grid-template-rows:auto 1fr auto;gap:16px}
+  .top{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start}
+  .brand-kicker{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--line);letter-spacing:.22em;font-size:12px;text-transform:uppercase}
+  .brand-title{margin:5px 0 0;font-size:clamp(34px,5vw,74px);line-height:.86;letter-spacing:.03em;text-transform:uppercase;font-weight:900;text-shadow:0 0 28px rgba(28,232,255,.36);animation:titleCharge 4.8s ease-in-out infinite}
+  .brand-sub{margin-top:12px;max-width:760px;color:var(--dim);font-size:14px;line-height:1.55}
+  .status-grid{display:grid;grid-template-columns:repeat(2,140px);gap:8px}
+  .stat{border:1px solid rgba(28,232,255,.18);background:rgba(3,14,25,.62);padding:10px 11px;clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%);position:relative;overflow:hidden}
+  .stat::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);animation:statScan 2.6s linear infinite}
+  .stat span{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);font-size:10px;letter-spacing:.16em;text-transform:uppercase}
+  .stat b{display:block;margin-top:5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;font-size:15px;letter-spacing:.08em}
+  .stat .live{color:var(--ok)}
+  .stat .listening{color:var(--ember)}
+  .stat .speaking{color:var(--ok)}
+
+  .nexus{display:grid;grid-template-columns:290px minmax(360px,1fr);gap:16px;min-height:0}
+  .agents{display:grid;gap:9px;align-content:start}
+  .section-title{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--line);font-size:11px;letter-spacing:.2em;text-transform:uppercase;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .section-title::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--line);box-shadow:0 0 12px var(--line)}
+  .agent{display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid rgba(28,232,255,.16);background:linear-gradient(90deg,rgba(28,232,255,.06),rgba(3,14,25,.65));clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);position:relative;overflow:hidden}
+  .agent::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(28,232,255,.14),transparent);transform:translateX(-110%);opacity:.0}
+  .agent.active::after{animation:dataSwipe 1.1s ease-in-out infinite;opacity:1}
+  .agent .sig{width:42px;height:42px;border-radius:50%;border:1px solid rgba(28,232,255,.28);display:grid;place-items:center;color:var(--line);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:800;font-size:11px;background:rgba(28,232,255,.05)}
+  .agent .name{font-weight:900;letter-spacing:.12em;font-size:12px}
+  .agent .role{color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;margin-top:2px}
+  .agent .state{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;letter-spacing:.14em;color:var(--muted)}
+  .agent.active{border-color:var(--ember);box-shadow:0 0 22px rgba(255,179,77,.18)}
+  .agent.active .sig,.agent.active .state{color:var(--ember);border-color:var(--ember)}
+  .agent.done{border-color:rgba(77,255,194,.36)}
+  .agent.done .sig,.agent.done .state{color:var(--ok);border-color:var(--ok)}
+
+  .holo{position:relative;min-height:620px;overflow:hidden;border:1px solid rgba(28,232,255,.22);background:radial-gradient(circle at center,rgba(28,232,255,.18),transparent 25rem),rgba(2,10,19,.58);clip-path:polygon(0 20px,20px 0,100% 0,100% calc(100% - 20px),calc(100% - 20px) 100%,0 100%);isolation:isolate}
+  .holo::before{content:"";position:absolute;inset:54px;border:1px solid rgba(28,232,255,.12);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);box-shadow:inset 0 0 80px rgba(28,232,255,.06);z-index:1}
+  .holo::after{content:"";position:absolute;left:-20%;right:-20%;height:22%;top:-24%;background:linear-gradient(180deg,transparent,rgba(28,232,255,.18),rgba(255,179,77,.08),transparent);filter:blur(4px);animation:holoScan 5.4s linear infinite;z-index:6;mix-blend-mode:screen}
+  .neural-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;opacity:.82}
+  .brain-shell{position:absolute;left:50%;top:48%;width:min(51vw,500px);aspect-ratio:1.08/1;transform:translate(-50%,-50%);z-index:3;filter:drop-shadow(0 0 32px rgba(28,232,255,.45));pointer-events:none}
+  .brain-lobe{position:absolute;border:1px solid rgba(28,232,255,.34);background:radial-gradient(circle at 42% 36%,rgba(255,255,255,.34),rgba(28,232,255,.18) 22%,rgba(2,19,36,.22) 52%,transparent 72%);box-shadow:inset 0 0 42px rgba(28,232,255,.22),0 0 42px rgba(28,232,255,.18);animation:brainFloat 5s ease-in-out infinite}
+  .brain-lobe.left{left:8%;top:16%;width:47%;height:56%;border-radius:62% 52% 58% 46% / 56% 60% 44% 48%}
+  .brain-lobe.right{right:8%;top:16%;width:47%;height:56%;border-radius:52% 62% 46% 58% / 60% 56% 48% 44%;animation-delay:-1.7s}
+  .brain-stem{position:absolute;left:42%;top:65%;width:18%;height:24%;border:1px solid rgba(77,255,194,.28);border-radius:42% 42% 58% 58%;background:linear-gradient(180deg,rgba(28,232,255,.18),rgba(77,255,194,.09),transparent);box-shadow:0 0 24px rgba(77,255,194,.18);animation:brainFloat 4.2s ease-in-out infinite reverse}
+  .synapse{position:absolute;width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 14px #fff,0 0 28px var(--line);z-index:4;animation:synapseFire 2.2s ease-in-out infinite}
+  .synapse.s1{left:24%;top:32%;animation-delay:-.3s}.synapse.s2{left:37%;top:23%;animation-delay:-1.1s}.synapse.s3{right:33%;top:35%;animation-delay:-.8s}.synapse.s4{right:25%;top:49%;animation-delay:-1.7s}.synapse.s5{left:43%;top:56%;animation-delay:-.5s}.synapse.s6{left:54%;top:27%;animation-delay:-1.4s}.synapse.s7{left:31%;top:67%;animation-delay:-2s}.synapse.s8{right:39%;top:66%;animation-delay:-.9s}
+  .brain-label{position:absolute;left:50%;top:72%;transform:translateX(-50%);z-index:5;border:1px solid rgba(28,232,255,.32);background:rgba(1,9,18,.72);padding:9px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;letter-spacing:.14em;text-transform:uppercase;color:var(--line);font-size:10px;box-shadow:0 0 22px rgba(28,232,255,.16)}
+  .brain-label b{display:block;color:#fff;font-size:12px;margin-bottom:3px;letter-spacing:.2em}
+  .pulse-ring{position:absolute;left:50%;top:48%;width:70%;aspect-ratio:1;border-radius:50%;border:1px solid rgba(28,232,255,.26);transform:translate(-50%,-50%);z-index:2;animation:pulseRing 3.2s ease-out infinite}
+  .pulse-ring.p2{animation-delay:1.05s}.pulse-ring.p3{animation-delay:2.1s}
+  .data-rain{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;opacity:.58}
+  .data-rain span{position:absolute;top:-20%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:rgba(28,232,255,.72);font-size:10px;text-shadow:0 0 10px var(--line);animation:dataFall linear infinite}
+  .data-rain span:nth-child(1){left:9%;animation-duration:7s}.data-rain span:nth-child(2){left:18%;animation-duration:9s;animation-delay:-4s}.data-rain span:nth-child(3){left:31%;animation-duration:6.4s;animation-delay:-2s}.data-rain span:nth-child(4){left:46%;animation-duration:8.5s;animation-delay:-6s}.data-rain span:nth-child(5){left:62%;animation-duration:7.4s;animation-delay:-3s}.data-rain span:nth-child(6){left:78%;animation-duration:9.6s;animation-delay:-5s}.data-rain span:nth-child(7){left:88%;animation-duration:6.8s;animation-delay:-1s}
+  .holo-core{position:absolute;left:50%;top:48%;width:min(46vw,430px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;pointer-events:none}
+  .holo-ring{position:absolute;inset:0;border-radius:50%;border:1px dashed rgba(28,232,255,.36);animation:spin 22s linear infinite}
+  .holo-ring.r2{inset:38px;border-style:solid;border-color:rgba(255,179,77,.28);animation-duration:15s;animation-direction:reverse}
+  .holo-ring.r3{inset:82px;border-color:rgba(77,255,194,.28);animation-duration:30s}
+  .holo-ring.r4{inset:128px;border-style:solid;border-width:2px;box-shadow:0 0 30px rgba(28,232,255,.26),inset 0 0 30px rgba(28,232,255,.14)}
+  .orb{width:132px;height:132px;border-radius:50%;background:radial-gradient(circle,#fff 0 18%,#9ff8ff 19% 32%,var(--line) 33% 58%,rgba(4,45,64,.68) 59% 100%);box-shadow:0 0 70px var(--line),0 0 160px rgba(28,232,255,.4);animation:breathe 3.2s ease-in-out infinite;opacity:.32}
+  .op-card{position:absolute;width:210px;border:1px solid rgba(28,232,255,.28);background:rgba(2,12,23,.78);padding:12px;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);z-index:8;animation:cardHover 5.6s ease-in-out infinite;transition:border-color .3s, box-shadow .3s}
+  .op-card.lit{border-color:var(--ember);box-shadow:0 0 28px rgba(255,179,77,.3)}
+  .op-card.done{border-color:var(--ok);box-shadow:0 0 22px rgba(77,255,194,.22)}
+  .op-card h4{margin:0;color:#fff;font-size:13px;letter-spacing:.12em;text-transform:uppercase}
+  .op-card p{margin:7px 0 0;color:var(--dim);font-size:12px;line-height:1.35}
+  .op-card .pill{display:inline-block;margin-top:10px;padding:4px 8px;background:var(--ember);color:#150900;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:900;font-size:10px;letter-spacing:.12em}
+  .op-card.done .pill{background:var(--ok);color:#031810}
+  .op-a{left:34px;top:78px}.op-b{right:40px;top:116px;animation-delay:-1.2s}.op-c{left:60px;bottom:92px;animation-delay:-2.5s}.op-d{right:56px;bottom:74px;animation-delay:-3.7s}
+  .voice{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);text-align:center;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--line);letter-spacing:.22em;font-size:11px;text-transform:uppercase;text-shadow:0 0 14px rgba(28,232,255,.85);z-index:10}
+  .voice.listening{color:var(--ember);text-shadow:0 0 14px rgba(255,179,77,.85);animation:flash 1.4s infinite}
+  .voice.speaking{color:var(--ok);text-shadow:0 0 14px rgba(77,255,194,.85)}
+  .bars{position:absolute;left:50%;bottom:58px;transform:translateX(-50%);height:36px;display:flex;align-items:flex-end;gap:4px;z-index:9}
+  .bars span{width:4px;height:6px;background:var(--line);box-shadow:0 0 8px var(--line);border-radius:2px;transition:height .06s}
+  .bars.listening span{background:var(--ember);box-shadow:0 0 8px var(--ember)}
+  .bars.speaking span{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+
+  .command-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .command{border:1px solid rgba(28,232,255,.24);background:rgba(3,14,25,.74);color:var(--ink);padding:13px 12px;text-align:left;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);transition:all .15s}
+  .command:hover{border-color:var(--line);box-shadow:0 0 14px rgba(28,232,255,.2)}
+  .command span{display:block;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase}
+  .command b{display:block;margin-top:4px;color:#fff;letter-spacing:.1em;text-transform:uppercase;font-size:12px}
+  .command.primary{background:linear-gradient(90deg,var(--line),#79fff0);color:#031018;border-color:var(--line)}
+  .command.primary span,.command.primary b{color:#031018}
+  .command.armed{border-color:var(--ember);box-shadow:0 0 14px rgba(255,179,77,.4)}
+  .command.armed b{color:var(--ember)}
+
+  .dossier{min-height:calc(100vh - 36px);padding:16px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+  .verdict{padding:16px;border:1px solid rgba(255,179,77,.35);background:radial-gradient(circle at 20% 0,rgba(255,179,77,.2),transparent 11rem),rgba(5,18,31,.76);clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%);transition:border-color .3s}
+  .verdict.v-build{border-color:rgba(77,255,194,.45);background:radial-gradient(circle at 20% 0,rgba(77,255,194,.2),transparent 11rem),rgba(5,18,31,.76)}
+  .verdict.v-watch{border-color:rgba(28,232,255,.45);background:radial-gradient(circle at 20% 0,rgba(28,232,255,.2),transparent 11rem),rgba(5,18,31,.76)}
+  .verdict.v-kill{border-color:rgba(255,61,103,.45);background:radial-gradient(circle at 20% 0,rgba(255,61,103,.18),transparent 11rem),rgba(5,18,31,.76)}
+  .eyebrow{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);font-size:10px;letter-spacing:.22em;text-transform:uppercase}
+  .verdict h2{margin:10px 0 6px;font-size:28px;line-height:1;letter-spacing:.08em;text-transform:uppercase}
+  .verdict p{margin:0;color:var(--dim);line-height:1.45;font-size:13px}
+  .badge{display:inline-block;margin-top:12px;padding:6px 10px;background:var(--ember);color:#190b00;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:900;letter-spacing:.16em}
+  .badge.b-build{background:var(--ok);color:#031810}
+  .badge.b-watch{background:var(--line);color:#031018}
+  .badge.b-kill{background:var(--danger);color:#fff}
+  .metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .metric{border:1px solid rgba(28,232,255,.16);background:rgba(2,12,23,.58);padding:10px}
+  .metric span{display:block;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+  .metric b{display:block;margin-top:5px;color:#fff;font-size:13px}
+  .score{display:grid;gap:9px}
+  .score-row{display:grid;grid-template-columns:126px 1fr 24px;gap:8px;align-items:center;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--dim)}
+  .track{height:8px;border:1px solid rgba(28,232,255,.16);background:rgba(28,232,255,.05);overflow:hidden}
+  .fill{height:100%;background:linear-gradient(90deg,var(--line),var(--ok),var(--ember));box-shadow:0 0 12px var(--line);position:relative;animation:barGlow 2s ease-in-out infinite;transition:width .8s}
+  .fill::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);animation:barSpark 1.8s linear infinite}
+  .feed{flex:1;min-height:170px;overflow:auto;border:1px solid rgba(28,232,255,.16);background:rgba(2,12,23,.52);padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.6}
+  .feed::-webkit-scrollbar{width:6px}.feed::-webkit-scrollbar-thumb{background:var(--line-soft)}
+  .feed-line{display:grid;grid-template-columns:62px 68px 1fr;gap:8px;padding:5px 0;border-bottom:1px dashed rgba(28,232,255,.11)}
+  .feed-line .t{color:var(--muted)}.feed-line .a{color:var(--ember);font-weight:900}.feed-line .m{color:var(--ink)}
+  .feed-line.sys .a{color:var(--line)}
+  .feed-line.ok .m{color:var(--ok)}
+  .feed-line.kill .m{color:var(--danger)}
+
+  .drawer-bg{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:20;display:none;align-items:center;justify-content:center;padding:18px}
+  .drawer-bg.open{display:flex}
+  .drawer{width:min(620px,100%);padding:0;clip-path:polygon(0 18px,18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%);max-height:90vh;overflow:auto}
+  .drawer header{padding:15px 18px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:center}
+  .drawer h3{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--line);font-size:13px;letter-spacing:.18em;text-transform:uppercase}
+  .drawer .body{padding:18px;display:grid;gap:12px}
+  .field{display:grid;gap:6px}
+  .field label{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+  .field input,.field select{width:100%;background:rgba(3,14,25,.8);border:1px solid rgba(28,232,255,.28);color:#fff;padding:11px;outline:none;border-radius:0;font-size:13px}
+  .field input:focus,.field select:focus{border-color:var(--line);box-shadow:0 0 12px rgba(28,232,255,.25)}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .hint{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);font-size:10px;letter-spacing:.08em;line-height:1.55}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:30;border:1px solid var(--line);background:rgba(2,12,23,.9);color:var(--line);padding:10px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;opacity:0;transition:.2s;letter-spacing:.08em}
+  .toast.show{opacity:1}
+
+  @keyframes worldGlow{50%{filter:saturate(1.25) brightness(1.08)}}
+  @keyframes gridDrift{to{background-position:64px 64px,64px 64px,320px 320px}}
+  @keyframes panelSweep{0%,55%{transform:translateX(-130%)}78%,100%{transform:translateX(130%)}}
+  @keyframes markSpin{to{transform:rotate(360deg)}}
+  @keyframes microPulse{50%{opacity:.35;transform:scale(.92)}}
+  @keyframes titleCharge{50%{text-shadow:0 0 22px rgba(28,232,255,.8),0 0 46px rgba(77,255,194,.32)}}
+  @keyframes statScan{to{transform:translateY(54px)}}
+  @keyframes dataSwipe{to{transform:translateX(110%)}}
+  @keyframes holoScan{to{top:112%}}
+  @keyframes brainFloat{50%{transform:translateY(-10px) scale(1.025);filter:brightness(1.2)}}
+  @keyframes synapseFire{0%,100%{transform:scale(.65);opacity:.45}18%{transform:scale(1.8);opacity:1}42%{transform:scale(.9);opacity:.7}}
+  @keyframes pulseRing{0%{transform:translate(-50%,-50%) scale(.35);opacity:.7}100%{transform:translate(-50%,-50%) scale(1.32);opacity:0}}
+  @keyframes dataFall{to{transform:translateY(760px)}}
+  @keyframes cardHover{50%{transform:translateY(-8px);box-shadow:0 0 26px rgba(28,232,255,.16)}}
+  @keyframes barGlow{50%{filter:brightness(1.22)}}
+  @keyframes barSpark{to{transform:translateX(115%)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes breathe{50%{transform:scale(1.08);filter:brightness(1.25)}}
+  @keyframes flash{0%,100%{opacity:1}50%{opacity:.45}}
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}
+  }
+  @media(max-width:1180px){
+    .app{grid-template-columns:72px 1fr}
+    .dossier{grid-column:2}
+    .nexus{grid-template-columns:1fr}
+    .agents{grid-template-columns:repeat(2,1fr)}
+  }
+  @media(max-width:760px){
+    .app{grid-template-columns:1fr;padding:10px}
+    .rail{min-height:auto;flex-direction:row;overflow:auto}
+    .rail-spacer,.rail-meter{display:none}
+    .stage,.dossier{min-height:auto;grid-column:auto}
+    .top{grid-template-columns:1fr}
+    .status-grid{grid-template-columns:repeat(2,1fr)}
+    .agents{grid-template-columns:1fr}
+    .holo{min-height:520px}
+    .holo-core{width:330px}
+    .op-card{width:160px;padding:10px}
+    .op-a{left:16px;top:66px}.op-b{right:16px;top:112px}.op-c{left:18px;bottom:104px}.op-d{right:18px;bottom:82px}
+    .command-row{grid-template-columns:1fr 1fr}
+    .form-grid,.metrics{grid-template-columns:1fr}
+  }
+  @media(max-width:480px){
+    .brand-title{font-size:40px}
+    .status-grid,.command-row{grid-template-columns:1fr}
+    .holo-core{width:280px}
+    .op-card{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:auto;margin:8px 12px}
+    .orb{width:104px;height:104px}
+    .holo{display:flex;flex-direction:column;justify-content:center;gap:4px;padding-top:190px}
+    .score-row{grid-template-columns:106px 1fr 22px}
+  }
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<main class="app">
+  <aside class="rail" aria-label="B.O.S.S. navigation">
+    <div class="reactor-mark" title="B.O.S.S. core"></div>
+    <button class="rail-button active" type="button" data-target="core"><b>01</b>Core</button>
+    <button class="rail-button" type="button" data-target="scan"><b>02</b>Scan</button>
+    <button class="rail-button" type="button" data-target="kill"><b>03</b>Kill</button>
+    <button class="rail-button" type="button" data-target="mail"><b>04</b>Mail</button>
+    <div class="rail-spacer"></div>
+    <div class="rail-meter" title="Signal integrity"><div id="meterFill" style="position:absolute;left:0;right:0;bottom:0;height:68%;background:linear-gradient(180deg,var(--line),var(--ok));box-shadow:0 0 16px var(--line);transition:height .4s"></div></div>
+  </aside>
+
+  <section class="stage" id="stage">
+    <header class="top" id="core">
+      <div>
+        <div class="brand-kicker">MekaOps autonomous venture intelligence</div>
+        <h1 class="brand-title">B.O.S.S.</h1>
+        <div class="brand-sub">A command nexus for daily app-opportunity research: find public pain, test market heat, shape ugly MVPs, price the wedge, and kill anything soft before it steals your week.</div>
+      </div>
+      <div class="status-grid">
+        <div class="stat"><span>Local</span><b id="clock">--:--:--</b></div>
+        <div class="stat"><span>Next run</span><b id="nextRun">08:00 CT</b></div>
+        <div class="stat"><span>System</span><b class="live">Online</b></div>
+        <div class="stat"><span>Voice</span><b id="voiceState">Standby</b></div>
+      </div>
+    </header>
+
+    <section class="nexus" id="scan">
+      <div class="card" style="padding:14px">
+        <h2 class="section-title">Agent stack</h2>
+        <div class="agents" id="agents"></div>
+      </div>
+
+      <div class="holo">
+        <canvas class="neural-canvas" id="neuralCanvas" aria-hidden="true"></canvas>
+        <div class="data-rain" aria-hidden="true">
+          <span>0101 SIGNAL</span><span>PAIN VECTOR</span><span>WTP TRACE</span><span>MARKET HEAT</span><span>FOUNDER FIT</span><span>KILL WEAK</span><span>MVP SCOPE</span>
+        </div>
+        <div class="pulse-ring" aria-hidden="true"></div>
+        <div class="pulse-ring p2" aria-hidden="true"></div>
+        <div class="pulse-ring p3" aria-hidden="true"></div>
+        <div class="brain-shell" aria-hidden="true">
+          <div class="brain-lobe left"></div>
+          <div class="brain-lobe right"></div>
+          <div class="brain-stem"></div>
+          <div class="synapse s1"></div><div class="synapse s2"></div><div class="synapse s3"></div><div class="synapse s4"></div>
+          <div class="synapse s5"></div><div class="synapse s6"></div><div class="synapse s7"></div><div class="synapse s8"></div>
+          <div class="brain-label"><b>AI BRAIN</b>Opportunity cognition active</div>
+        </div>
+        <div class="holo-core" aria-hidden="true">
+          <div class="holo-ring"></div>
+          <div class="holo-ring r2"></div>
+          <div class="holo-ring r3"></div>
+          <div class="holo-ring r4"></div>
+          <div class="orb"></div>
+        </div>
+        <article class="op-card op-a" data-card="scout"><h4>Pain Radar</h4><p>Forums, reviews, complaints, niche communities.</p><span class="pill">SCANNING</span></article>
+        <article class="op-card op-b" data-card="score"><h4>Score Funnel</h4><p>Pain, reach, WTP, MVP simplicity, founder fit.</p><span class="pill">8.1 / 10</span></article>
+        <article class="op-card op-c" data-card="mvp"><h4>Ugly MVP</h4><p>Smallest thing that proves demand before build debt.</p><span class="pill">7 DAYS</span></article>
+        <article class="op-card op-d" data-card="mail"><h4>Morning Drop</h4><p>Saved report, top pick, kill list, email briefing.</p><span class="pill">08:00 CT</span></article>
+        <div class="bars" id="bars"></div>
+        <div class="voice" id="voiceLine">Awaiting wake word: "Hey Boss"</div>
+      </div>
+    </section>
+
+    <footer class="command-row">
+      <button class="command primary" type="button" onclick="runBriefing()"><span>Command</span><b>Run briefing</b></button>
+      <button class="command" type="button" onclick="speakBriefing()"><span>Voice</span><b>Read report</b></button>
+      <button class="command" id="listenBtn" type="button" onclick="toggleListening()"><span>Wake word</span><b id="listenLabel">Arm listener</b></button>
+      <button class="command" type="button" onclick="openSettings()"><span>System</span><b>Configure</b></button>
+    </footer>
+  </section>
+
+  <aside class="dossier">
+    <section class="verdict" id="verdictBox">
+      <div class="eyebrow">B.O.S.S. verdict</div>
+      <h2 id="topName">Quiet Hours</h2>
+      <p id="topLine">Auto-mute specific people and apps during declared deep-work windows, then signal availability without Slack drama.</p>
+      <span class="badge" id="topVerdict">VALIDATE</span>
+    </section>
+
+    <section class="metrics">
+      <div class="metric"><span>Weighted score</span><b id="topScore">8.1 / 10</b></div>
+      <div class="metric"><span>Target</span><b id="topTarget">Knowledge workers</b></div>
+      <div class="metric"><span>Model</span><b id="topModel">$6.99/mo Pro</b></div>
+      <div class="metric"><span>MVP</span><b id="topMvp">Low complexity</b></div>
+    </section>
+
+    <section class="card" style="padding:14px">
+      <h2 class="section-title">Score rails</h2>
+      <div class="score" id="score"></div>
+    </section>
+
+    <section class="card" style="padding:14px" id="kill">
+      <h2 class="section-title">Kill list</h2>
+      <div id="kills"></div>
+    </section>
+
+    <section id="mail">
+      <h2 class="section-title">Live feed</h2>
+      <div class="feed" id="feed"></div>
+    </section>
+  </aside>
+</main>
+
+<div class="drawer-bg" id="drawer">
+  <div class="drawer">
+    <header>
+      <h3>System configuration</h3>
+      <button class="command" style="padding:9px 12px" type="button" onclick="closeSettings()"><span>Close</span><b>X</b></button>
+    </header>
+    <div class="body">
+      <div class="form-grid">
+        <div class="field"><label>Morning run time</label><input id="cfgTime" type="time" value="08:00"></div>
+        <div class="field"><label>Timezone</label>
+          <select id="cfgTz">
+            <option value="America/Chicago">America/Chicago (CT)</option>
+            <option value="America/New_York">America/New_York (ET)</option>
+            <option value="America/Denver">America/Denver (MT)</option>
+            <option value="America/Los_Angeles">America/Los_Angeles (PT)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>Wake word</label><input id="cfgWake" value="hey boss"></div>
+        <div class="field"><label>Report email</label><input id="cfgEmail" placeholder="meka.anyanwu@gmail.com"></div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>ElevenLabs key</label><input id="cfgKey" type="password" placeholder="sk_..."></div>
+        <div class="field"><label>Voice ID</label><input id="cfgVoice" placeholder="e.g. JBFqnCBsd6RMkjVDRZzb"></div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>Voice model</label>
+          <select id="cfgModel">
+            <option value="eleven_turbo_v2_5">eleven_turbo_v2_5 (fast)</option>
+            <option value="eleven_multilingual_v2">eleven_multilingual_v2</option>
+            <option value="eleven_monolingual_v1">eleven_monolingual_v1</option>
+          </select>
+        </div>
+        <div class="field"><label>&nbsp;</label>
+          <button class="command" type="button" onclick="testVoice()"><span>Verify</span><b>Test voice</b></button>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>OpenAI key (reasoning brain)</label><input id="cfgOpenAI" type="password" placeholder="sk-..."></div>
+        <div class="field"><label>OpenAI model</label>
+          <select id="cfgOpenAIModel">
+            <option value="gpt-4o-mini">gpt-4o-mini (fast)</option>
+            <option value="gpt-4o">gpt-4o</option>
+            <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+            <option value="gpt-4.1">gpt-4.1</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Send sensitive memory to OpenAI</label>
+        <select id="cfgFullMem">
+          <option value="false">No — keep address, partner, ex-relationship private (default)</option>
+          <option value="true">Yes — send full memory seed</option>
+        </select>
+      </div>
+      <div class="hint">Keys live in localStorage on this device. Mic access required for wake word — use Chrome. OpenAI key lets BOSS answer open-ended questions like "explain that" or "why does Friday scrape Hacker News". For fully autonomous email delivery + web research while this tab is closed, point the same UI at the Next.js + Supabase + Resend cron backend in the build spec.</div>
+      <button class="command primary" type="button" onclick="saveSettings()"><span>Persist</span><b>Save configuration</b></button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   B.O.S.S. COMMAND NEXUS — engine
+   Codex visual layer + full runtime (wake word, ElevenLabs, scheduler,
+   audio analyser, op-card pipeline, weighted scoring, verdict logic)
+   ===================================================================== */
+
+const AGENTS=[
+  ["BOSS","B.O.S.S.","Chief decision agent"],
+  ["FRDY","F.R.I.D.A.Y.","Opportunity scout"],
+  ["SNPR","S.N.I.P.E.R.","Competitor hunter"],
+  ["VOID","V.O.I.D.","Demand validator"],
+  ["BLUE","B.L.U.E.","Ugly MVP architect"],
+  ["VIBE","V.I.B.E.","Validation tests"],
+  ["CASH","C.A.S.H.","Pricing and LTV"],
+  ["TRON","T.R.O.N.","Runtime telemetry"]
+];
+
+// Weighting from the spec
+const WEIGHTS={pain_intensity:.20,willingness:.15,reachability:.15,mvp_simplicity:.15,weak_competition:.10,marketing_hook:.10,subscription:.10,founder_fit:.05};
+
+const DATA={
+  top:{
+    name:"Quiet Hours",
+    line:"Auto-mute specific people and apps during declared deep-work windows, then signal availability without Slack drama.",
+    pain:"Constant interruption from non-urgent Slack and messages during focus blocks. Existing Focus Mode is too blunt.",
+    evidence:"127 unique complaints on r/productivity in 30 days. iOS Focus Mode averages 3.1 stars in 412 reviews citing the same gap.",
+    target:"Knowledge workers, ICs, founders",
+    model:"$6.99/mo Pro · $12/mo Team",
+    mvp:"Low — 3 screens + Focus & Calendar APIs",
+    verdict:"VALIDATE",
+    scores:{
+      pain_intensity:9,
+      frequency:9,
+      willingness:7,
+      reachability:8,
+      mvp_simplicity:8,
+      weak_competition:8,
+      marketing_hook:9,
+      subscription:7,
+      founder_fit:8,
+      urgency:7
+    }
+  },
+  ranking:[
+    {rank:1,name:"Quiet Hours",line:"Smart auto-mute for deep-work blocks.",score:8.1,verdict:"VALIDATE"},
+    {rank:2,name:"Petsitter Escrow",line:"Trust + payment escrow for neighborhood pet care.",score:7.4,verdict:"VALIDATE"},
+    {rank:3,name:"Meal-Prep Draft",line:"AI weekly meal plan from your actual fridge photos.",score:6.8,verdict:"WATCH"}
+  ],
+  kills:[
+    ["AI Tarot","Novelty. Weak retention. Low willingness to pay."],
+    ["NFT Recipe Vault","No pain, no urgency, no sane wedge."],
+    ["Voice Twitter","Network effects make this a trap."],
+    ["Resume Roaster","Commodity market racing to zero."]
+  ]
+};
+
+const SCORE_LABELS={
+  pain_intensity:"Pain intensity",
+  frequency:"Frequency",
+  willingness:"Willingness",
+  reachability:"Reachability",
+  mvp_simplicity:"MVP simplicity",
+  weak_competition:"Weak competition",
+  marketing_hook:"Marketing hook",
+  founder_fit:"Founder fit"
+};
+
+// Defaults — pre-seeded so first-open just works.
+const DEFAULTS={
+  time:"08:00",
+  tz:"America/Chicago",
+  wake:"hey boss",
+  email:"meka.anyanwu@gmail.com",
+  voice:"6sFKzaJr574YWVu4UuJF",   // Meka's ElevenLabs voice
+  model:"eleven_turbo_v2_5",
+  key:"",
+  openaiKey:"",
+  openaiModel:"gpt-4o-mini",
+  sendFullMemory:false            // off by default — keeps address + relationship details out of cloud calls
+};
+
+// Spoken names (what BOSS actually says out loud). The dotted forms are kept
+// for the UI panels so the agent stack still reads as F.R.I.D.A.Y. on screen.
+const AGENT_SPOKEN={
+  BOSS:"Boss",
+  FRDY:"Friday",
+  SNPR:"Sniper",
+  BLUE:"Blue",
+  VOID:"Void",
+  VIBE:"Vibe",
+  CASH:"Cash",
+  TRON:"Tron"
+};
+const spk = code => AGENT_SPOKEN[code] || code;
+
+/* =====================================================================
+   MEKA SEED — personal memory used by BOSS for context-aware responses.
+   Fields tagged `sensitive:true` are NEVER sent to OpenAI by default and
+   are NEVER spoken unless Meka explicitly asks. See sanitizedSeed().
+   ===================================================================== */
+const MEKA_SEED = {
+  identity: {
+    name: "Meka Anyanwu",
+    handles: ["Meka","Mekatron","King Meka"],
+    origin: "Nigeria",
+    base: "Dallas / Aubrey, Texas",
+    address: { value: "1525 Abbottsford Avenue, Aubrey, Texas", sensitive: true },
+    timezone: "America/Chicago (Central)",
+    dob: "April 25, 1988"
+  },
+  roles: [
+    "Day trader (options focus, SPY 0DTE)",
+    "Senior IT Project Manager (PSM, PMP, MSPM)",
+    "Product builder / app concept creator",
+    "Creative writer and music creator",
+    "Father"
+  ],
+  family: {
+    son: { name: "Alexander", sensitive: false },
+    girlfriend: { name: "Lindi", sensitive: true },
+    ex: { name: "Emma", details: "private", sensitive: true },
+    futureChild: "Plans to name future daughter Rome"
+  },
+  voice_preferences: {
+    likes: [
+      "Direct, honest, forward-thinking",
+      "Conversational, not sugar-coated",
+      "Human-sounding, practical, innovative",
+      "Confident and masculine in personal contexts",
+      "KISS — Keep It Simple, Stupid — for trading",
+      "Developer-grade specificity for product prompts"
+    ],
+    avoids: [
+      "Em dashes (they read as AI)",
+      "Generic chatbot phrasing",
+      "Customer-service tone",
+      "Cheesy or interview-style questions in flirty contexts",
+      "Over-explaining when short asked",
+      "Robotic openings like 'as an AI'"
+    ],
+    cultural: "Sometimes Nigerian Pidgin when casual; otherwise standard English"
+  },
+  trading: {
+    style: "Intraday options, focused on SPY and 0DTE",
+    watchlist: ["SPY","QQQ","NVDA","AMD","TSLA","PLTR","GOOGL","HOOD","MRNA","AMZN","META","AAPL","SMCI"],
+    strategy: "2-minute Trend Containment Candle (~61% win rate)",
+    weakness: "Losses larger than winners — needs strict stops + no revenge trades",
+    rules: ["Green is Sacred","Precision over Activity","No setup, no trade","Stop after two losses"],
+    tools: ["TradingView","Webull","PineScript","Claude for indicator prompts"]
+  },
+  apps_in_flight: {
+    "Friday OS": "Personal iOS Jarvis — bright futuristic, holographic, SwiftUI + RealityKit, voice-first",
+    "Ru": "Women's insight app; spaces called 'girlies' (Flow, Ava, Ember, Bestie); paid tier Ru Aura",
+    "OutdoorSafe (Sky)": "Outdoor safety aggregator — AQI, pollen, wildfire, weather fusion",
+    "Tradjent": "Black Box for Traders — emotional pattern detection, AI voice analysis, FOMO signal",
+    "DAUBED.IO": "Booking SaaS for tattoo artists / beauty pros; near-black + bone white + rust red brand",
+    "Quovo": "60-second hot-take video/audio app with Takes (renamed from Debate Tree)",
+    "Estimio": "SaaS concept, debating estimio.app vs estimio.io",
+    "Roblox – Evil Babysitter's Obby": "Haunted house obby with Baby Mode + skins",
+    "YouTube – Roots & Rhythm / Word Alive AI / Cinematic AI / Bunny series": "Cinematic AI + African folklore + faith content"
+  },
+  work_context: {
+    employer_context: "AHA / Argano / Xactly incentive comp implementation",
+    style: "Executive-ready, action-item focused, weekly status with milestones / risks / blockers",
+    tools: ["MS Teams","SharePoint","PlanHat","Smartsheet","JIRA","Salesforce","Dynamics 365"]
+  },
+  sports: { fav: "LeBron James", second: "Victor Wembanyama" },
+  travel: { local: "American Airlines", to_nigeria: "Lufthansa only" },
+  faith: "Open to Christian app concepts — Bible study, prayer, devotion with AI",
+  music: ["Afrobeat (Davido energy)","Emotional R&B","Igbo love songs (Flavour-style)","French romantic / EDM","Suno-style prompts"],
+  hot_buttons_for_boss: [
+    "Protect Meka from shiny-object syndrome (he juggles many projects)",
+    "Push him toward the highest-leverage task",
+    "Call out scope creep — 'You already decided this feature is future build, not MVP'",
+    "Call out emotional trading — 'Are you following your setup or chasing?'",
+    "Push for written follow-ups when timelines slip"
+  ]
+};
+
+/* Return a flattened, cloud-safe snapshot of the seed. By default highly-
+   sensitive fields are redacted before going to OpenAI. Toggle via cfg. */
+function sanitizedSeed(includeSensitive=false){
+  const s = JSON.parse(JSON.stringify(MEKA_SEED));
+  if(!includeSensitive){
+    if(s.identity?.address) delete s.identity.address;
+    if(s.family?.girlfriend) s.family.girlfriend = "private";
+    if(s.family?.ex) s.family.ex = "private";
+  }
+  return s;
+}
+
+// Rotating background tasks each agent is "always doing" when idle.
+const AGENT_BG_TASKS={
+  BOSS:[
+    "reviewing yesterday's top three outcomes",
+    "preparing the next research packet",
+    "scoring overnight scout reports",
+    "ranking the carryover candidates from last week"
+  ],
+  FRDY:[
+    "monitoring forty-seven subreddits and twelve newsletters",
+    "scraping fresh App Store reviews in the productivity niche",
+    "tracking eight creator-economy trends on TikTok and X",
+    "harvesting complaint threads from Hacker News and Product Hunt"
+  ],
+  SNPR:[
+    "auditing fourteen competitor apps in the focus-tooling niche",
+    "mining one-star reviews on the top five calendar apps",
+    "watching pricing pages on nine SaaS competitors",
+    "mapping feature gaps across the top three rivals"
+  ],
+  VOID:[
+    "running search-volume checks on twenty-three keyword clusters",
+    "measuring discussion velocity in three niche communities",
+    "estimating willingness to pay across two pricing buckets",
+    "scoring urgency and frequency signals from public forums"
+  ],
+  BLUE:[
+    "stripping the Quiet Hours scope down to three screens",
+    "sketching data models for two top-three candidates",
+    "auditing required APIs for the focus integrations",
+    "drafting a seven day build path for the lead idea"
+  ],
+  VIBE:[
+    "drafting landing-page hooks for the top opportunity",
+    "writing four Reddit post variants for r-slash productivity",
+    "scripting three TikTok hooks under twenty-five seconds",
+    "building the waitlist copy and kill criteria"
+  ],
+  CASH:[
+    "modeling lifetime value at six ninety-nine versus nine ninety-nine Pro",
+    "comparing competitor pricing across twelve apps",
+    "calculating subscription elasticity for the focus niche",
+    "estimating revenue upside at one thousand paying users"
+  ],
+  TRON:[
+    "watching system telemetry and API spend",
+    "deduplicating overnight idea signals",
+    "running uptime checks on every scout pipeline",
+    "verifying email delivery and report archive integrity"
+  ]
+};
+
+function pickBg(code){
+  const list=AGENT_BG_TASKS[code]||["standing by"];
+  // Rotate based on hour so it feels alive but stable within an hour.
+  const idx=(new Date().getHours()+code.charCodeAt(0))%list.length;
+  return list[idx];
+}
+
+const state={
+  listening:false, speaking:false, recognition:null,
+  runs:0, ideas:0, started:Date.now(),
+  cfg:Object.assign({},DEFAULTS,loadCfg()),
+  barsTimer:null,
+  audioCtx:null, analyser:null, dataArr:null, audioElement:null,
+  brainBoost:1,
+  lastFireKey:null,
+  hasRunToday:false,
+  restartBackoff:300,
+  lastTranscript:"",
+  micGranted:false,
+  mode:"wake",                // "wake" | "command"
+  commandWindowTimer:null,
+  briefingActive:false,
+  agentTasks:{},              // code -> current task string
+  history:[],                 // rolling conversation: [{role,content}]
+  lastAnswer:""               // last thing BOSS said, for "explain that"
+};
+
+// Seed initial background tasks
+AGENTS.forEach(a=>{ state.agentTasks[a[0]] = pickBg(a[0]); });
+
+function loadCfg(){try{return JSON.parse(localStorage.getItem("boss.nexus.cfg"))||{}}catch(e){return {}}}
+function persist(){localStorage.setItem("boss.nexus.cfg",JSON.stringify(state.cfg))}
+function $(id){return document.getElementById(id)}
+
+/* ---------- BOOT ---------- */
+function boot(){
+  renderAgents();
+  renderScores();
+  renderKills();
+  buildBars();
+  startNeuralBrain();
+  wireRail();
+  applyVerdict(DATA.top.verdict);
+  tick();
+  setInterval(tick,1000);
+  setInterval(scheduleCheck,15000);
+  log("SYS","Command nexus online.","sys");
+  log("TRON","Voice ID pre-loaded: "+state.cfg.voice,"");
+  log("TRON","Awaiting morning research cycle.","");
+  if(!state.cfg.key){
+    toast("Tap Configure → paste your ElevenLabs key, then Arm listener.");
+  }else{
+    toast(`Ready. Press Arm listener and say "${state.cfg.wake}".`);
+  }
+  // Preload synth voices on first gesture
+  document.addEventListener("click",()=>{try{window.speechSynthesis&&speechSynthesis.getVoices();}catch(e){}},{once:true});
+}
+
+/* ---------- NEURAL CANVAS ---------- */
+function startNeuralBrain(){
+  const canvas=$("neuralCanvas");
+  if(!canvas)return;
+  const ctx=canvas.getContext("2d");
+  const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let w=0,h=0,dpr=1;
+  const nodes=Array.from({length:76},(_,i)=>({
+    x:0,y:0,vx:0,vy:0,r:1.2+Math.random()*2.4,phase:Math.random()*Math.PI*2,core:i<18
+  }));
+  function reset(){
+    const rect=canvas.getBoundingClientRect();
+    dpr=Math.min(2,window.devicePixelRatio||1);
+    w=Math.max(1,Math.floor(rect.width));
+    h=Math.max(1,Math.floor(rect.height));
+    canvas.width=Math.floor(w*dpr);
+    canvas.height=Math.floor(h*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    nodes.forEach((n,i)=>{
+      const a=(i/nodes.length)*Math.PI*2;
+      const radius=n.core ? Math.min(w,h)*(0.08+Math.random()*0.16) : Math.min(w,h)*(0.18+Math.random()*0.42);
+      n.x=w/2+Math.cos(a)*radius+(Math.random()-.5)*42;
+      n.y=h*.48+Math.sin(a)*radius*.72+(Math.random()-.5)*42;
+      n.vx=(Math.random()-.5)*(n.core ? .28 : .58);
+      n.vy=(Math.random()-.5)*(n.core ? .24 : .48);
+    });
+  }
+  function draw(time){
+    ctx.clearRect(0,0,w,h);
+    // Audio-reactive boost: if speaking, sample analyser for live amplitude
+    let liveBoost=state.brainBoost||1;
+    if(state.speaking && state.analyser && state.dataArr){
+      state.analyser.getByteFrequencyData(state.dataArr);
+      let sum=0;
+      for(let k=0;k<state.dataArr.length;k++) sum+=state.dataArr[k];
+      const avg=sum/state.dataArr.length/255;
+      liveBoost = 1.2 + avg*2.8;
+    }
+    const cx=w/2,cy=h*.48;
+    const glow=ctx.createRadialGradient(cx,cy,10,cx,cy,Math.min(w,h)*.48);
+    glow.addColorStop(0,`rgba(28,232,255,${0.22*liveBoost})`);
+    glow.addColorStop(.45,"rgba(28,232,255,.06)");
+    glow.addColorStop(1,"rgba(28,232,255,0)");
+    ctx.fillStyle=glow;
+    ctx.fillRect(0,0,w,h);
+    nodes.forEach(n=>{
+      n.phase+=.018*liveBoost;
+      n.x+=n.vx*liveBoost+Math.cos(n.phase)*.06;
+      n.y+=n.vy*liveBoost+Math.sin(n.phase*.9)*.05;
+      const dx=n.x-cx,dy=n.y-cy;
+      const limit=Math.min(w,h)*(n.core ? .22 : .49);
+      if(Math.hypot(dx,dy)>limit){
+        n.vx+=(cx-n.x)*.0009;
+        n.vy+=(cy-n.y)*.0009;
+      }
+      if(n.x<16||n.x>w-16)n.vx*=-1;
+      if(n.y<20||n.y>h-20)n.vy*=-1;
+    });
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const a=nodes[i],b=nodes[j];
+        const dist=Math.hypot(a.x-b.x,a.y-b.y);
+        const max=a.core||b.core?118:84;
+        if(dist<max){
+          const alpha=(1-dist/max)*(.34*liveBoost);
+          ctx.strokeStyle=`rgba(28,232,255,${alpha})`;
+          ctx.lineWidth=(a.core&&b.core?1.4:.75);
+          ctx.beginPath();
+          ctx.moveTo(a.x,a.y);
+          ctx.lineTo(b.x,b.y);
+          ctx.stroke();
+        }
+      }
+    }
+    nodes.forEach((n,i)=>{
+      const fire=(Math.sin(time*.004+n.phase*2)+1)/2;
+      ctx.beginPath();
+      ctx.fillStyle=n.core?`rgba(255,255,255,${.65+fire*.35})`:`rgba(${i%5===0?255:28},${i%5===0?179:232},${i%5===0?77:255},${.35+fire*.55})`;
+      ctx.shadowColor=n.core?"#1ce8ff":(i%5===0?"#ffb34d":"#1ce8ff");
+      ctx.shadowBlur=12+fire*20*liveBoost;
+      ctx.arc(n.x,n.y,n.r*(1+fire*.65*liveBoost),0,Math.PI*2);
+      ctx.fill();
+      ctx.shadowBlur=0;
+    });
+    if(!reduce)requestAnimationFrame(draw);
+  }
+  reset();
+  window.addEventListener("resize",reset);
+  if(reduce)draw(0);
+  else requestAnimationFrame(draw);
+}
+
+/* ---------- WEIGHTED SCORE ---------- */
+function weightedScore(s){
+  // Map score keys → spec weights
+  const map={
+    pain_intensity:s.pain_intensity, willingness:s.willingness, reachability:s.reachability,
+    mvp_simplicity:s.mvp_simplicity, weak_competition:s.weak_competition,
+    marketing_hook:s.marketing_hook, subscription:s.subscription, founder_fit:s.founder_fit
+  };
+  let total=0;
+  for(const k in WEIGHTS) total += (map[k]||0)*WEIGHTS[k];
+  return total;
+}
+
+function verdictFromScore(n){
+  if(n>=8.5) return "BUILD";
+  if(n>=7.0) return "VALIDATE";
+  if(n>=5.5) return "WATCH";
+  return "KILL";
+}
+
+/* ---------- RENDER ---------- */
+function renderAgents(){
+  $("agents").innerHTML=AGENTS.map(a=>`
+    <div class="agent" data-code="${a[0]}">
+      <div class="sig">${a[0]}</div>
+      <div><div class="name">${a[1]}</div><div class="role">${a[2]}</div></div>
+      <div class="state">IDLE</div>
+    </div>`).join("");
+}
+
+function renderScores(){
+  // Show only the 8 weighted categories (skip urgency/frequency)
+  const keys=Object.keys(SCORE_LABELS);
+  $("score").innerHTML=keys.map(k=>{
+    const v=DATA.top.scores[k]||0;
+    return `<div class="score-row">
+      <div>${SCORE_LABELS[k]}</div>
+      <div class="track"><div class="fill" style="width:${v*10}%"></div></div>
+      <div>${v}</div>
+    </div>`;
+  }).join("");
+  const ws=weightedScore(DATA.top.scores);
+  $("topScore").textContent=ws.toFixed(1)+" / 10";
+}
+
+function renderKills(){
+  $("kills").innerHTML=DATA.kills.map(k=>`
+    <div class="metric" style="margin-bottom:8px">
+      <span style="color:var(--danger)">KILL</span><b>${k[0]}</b>
+      <div style="margin-top:6px;color:var(--dim);font-size:12px;line-height:1.35">${k[1]}</div>
+    </div>`).join("");
+}
+
+function applyVerdict(v){
+  const box=$("verdictBox"), badge=$("topVerdict");
+  box.classList.remove("v-build","v-watch","v-kill");
+  badge.classList.remove("b-build","b-watch","b-kill");
+  badge.textContent=v;
+  if(v==="BUILD"){box.classList.add("v-build");badge.classList.add("b-build")}
+  else if(v==="WATCH"){box.classList.add("v-watch");badge.classList.add("b-watch")}
+  else if(v==="KILL"){box.classList.add("v-kill");badge.classList.add("b-kill")}
+}
+
+function buildBars(){
+  $("bars").innerHTML=Array.from({length:44},()=>"<span></span>").join("");
+}
+
+/* ---------- CLOCK / NEXT-RUN LABEL ---------- */
+function tick(){
+  const now=new Date();
+  $("clock").textContent=now.toLocaleTimeString("en-US",{hour12:false});
+  const time=state.cfg.time||"08:00";
+  const tz=state.cfg.tz||"America/Chicago";
+  const tzLabel = tz.includes("Chicago")?"CT":tz.includes("New_York")?"ET":tz.includes("Denver")?"MT":tz.includes("Los_Angeles")?"PT":"LOCAL";
+  $("nextRun").textContent=`${time} ${tzLabel}`;
+}
+
+/* ---------- LOG ---------- */
+function log(agent,msg,klass=""){
+  const row=document.createElement("div");
+  row.className="feed-line "+klass;
+  row.innerHTML=`<span class="t">${new Date().toLocaleTimeString("en-US",{hour12:false})}</span><span class="a">${agent}</span><span class="m">${msg}</span>`;
+  $("feed").appendChild(row);
+  $("feed").scrollTop=$("feed").scrollHeight;
+}
+
+/* ---------- AGENT STATE + OP-CARDS ---------- */
+function setAgent(code,mode){
+  document.querySelectorAll(".agent").forEach(el=>{
+    if(el.dataset.code!==code)return;
+    el.classList.remove("active","done");
+    if(mode==="ACTIVE")el.classList.add("active");
+    if(mode==="DONE")el.classList.add("done");
+    el.querySelector(".state").textContent=mode;
+  });
+}
+function resetAgents(){
+  AGENTS.forEach(a=>setAgent(a[0],"IDLE"));
+  document.querySelectorAll(".op-card").forEach(c=>c.classList.remove("lit","done"));
+}
+function litCard(name){
+  document.querySelectorAll(".op-card").forEach(c=>c.classList.remove("lit"));
+  const el=document.querySelector(`.op-card[data-card="${name}"]`);
+  if(el)el.classList.add("lit");
+}
+function doneCard(name){
+  const el=document.querySelector(`.op-card[data-card="${name}"]`);
+  if(el){el.classList.remove("lit");el.classList.add("done")}
+}
+
+/* ---------- BRIEFING PIPELINE ---------- */
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function runBriefing(){
+  if(state.briefingActive){toast("Briefing already running.");return}
+  if(state.speaking){await stopSpeaking()}
+  state.briefingActive=true;
+  resetAgents();
+  $("feed").innerHTML="";
+  state.runs++; state.ideas+=17;
+  state.brainBoost=1.7;
+  log("SYS","▶ Autonomous briefing run initiated.","sys");
+  const steps=[
+    ["TRON","Telemetry envelope opened.",380,null,null,"opening the telemetry envelope"],
+    ["BOSS","Mission: find pain, reject fluff, protect Meka's time.",520,null,null,"setting the daily mission and research packet"],
+    ["FRDY","Scanning Reddit, X, Product Hunt, App Store reviews, HN…",700,"scout",null,"scanning Reddit, X, Product Hunt, App Store, and Hacker News"],
+    ["FRDY","17 complaint clusters captured. Top 5 promoted.",520,null,"scout","promoting the top five complaint clusters from seventeen captured"],
+    ["VOID","Demand pressure scored: urgency, frequency, pay clues.",680,null,null,"scoring demand pressure across urgency, frequency, and pay clues"],
+    ["SNPR","Competitor weakness detected in focus tooling + team availability.",680,null,null,"flagging competitor weakness in focus tooling and team availability"],
+    ["BOSS","Filtering top 3. Killing 2 weak signals.",520,null,null,"filtering the top three and killing two weak signals"],
+    ["BLUE","Ugly MVP reduced to 3 screens + Calendar/Focus APIs.",680,"mvp",null,"reducing the ugly MVP to three screens plus Calendar and Focus APIs"],
+    ["CASH","Subscription modeled: $6.99 Pro · $12 Team.",600,"score",null,"modeling the subscription at six ninety-nine Pro and twelve dollar Team"],
+    ["VIBE","7-day validation script generated with kill thresholds.",660,null,"mvp","generating a seven day validation script with kill thresholds"],
+    ["BOSS","Scoring funnel applied. Weighted score computed.",520,null,"score","applying the scoring funnel and computing the weighted score"],
+    ["BOSS",`Top opportunity: ${DATA.top.name}. Verdict: ${DATA.top.verdict}.`,640,null,null,`finalizing the top opportunity ${DATA.top.name}`],
+    ["TRON",`Report saved. Email queued for ${state.cfg.email||"meka.anyanwu@gmail.com"}.`,560,"mail",null,"saving the report and queuing the morning email"],
+    ["TRON","✓ Briefing complete. Standing by.",420,null,"mail","standing by after report completion"]
+  ];
+  for(const [a,m,d,lit,done,task] of steps){
+    setAgent(a,"ACTIVE");
+    if(lit) litCard(lit);
+    if(done) doneCard(done);
+    if(task) state.agentTasks[a]=task;
+    log(a,m,a==="BOSS"?"sys":"");
+    await wait(d);
+    setAgent(a,"DONE");
+  }
+  // After briefing, reset each agent's task to a background-monitoring statement
+  AGENTS.forEach(a=>{ state.agentTasks[a[0]] = pickBg(a[0]); });
+  state.brainBoost=1;
+  state.hasRunToday=true;
+  state.briefingActive=false;
+  log("SYS",`▶ Run complete. ${DATA.top.name} → ${DATA.top.verdict}.`,"ok");
+  toast("Briefing ready. Tap Read report or say "+(state.cfg.wake||"hey boss")+".");
+  if(state.cfg.key && state.cfg.voice) speakBriefing();
+}
+
+/* ---------- SPOKEN SCRIPT ---------- */
+function briefingText(){
+  const ws=weightedScore(DATA.top.scores).toFixed(1);
+  const date=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  return [
+    `Good morning Meka. This is BOSS. Daily venture briefing, ${date}.`,
+    `Top opportunity today: ${DATA.top.name}.`,
+    `${DATA.top.line}`,
+    `Pain signal: ${DATA.top.pain}`,
+    `Evidence: ${DATA.top.evidence}`,
+    `Weighted score: ${ws} out of 10. Verdict: ${DATA.top.verdict}.`,
+    `Recommended next step: launch a seven day validation. Landing page, waitlist, two Reddit posts, three short form videos. Kill it if under fifty signups.`,
+    `Number two on the board: ${DATA.ranking[1].name}. ${DATA.ranking[1].line}. Verdict ${DATA.ranking[1].verdict}.`,
+    `Number three: ${DATA.ranking[2].name}. ${DATA.ranking[2].line}. Verdict ${DATA.ranking[2].verdict}.`,
+    `Kill list today: ${DATA.kills.slice(0,3).map(k=>k[0]).join(", ")}. Dead on arrival.`,
+    `System nominal. Standing by, Meka.`
+  ].join(" ");
+}
+
+/* ---------- ELEVENLABS TTS + AUDIO ANALYSER ---------- */
+async function speakBriefing(){
+  await speak(briefingText());
+}
+
+async function speak(text){
+  if(state.speaking){toast("Already speaking.");return}
+  state.speaking=true;
+  setVoice("Speaking");
+  startBars("speaking");
+
+  const key=state.cfg.key, voice=state.cfg.voice, model=state.cfg.model||"eleven_turbo_v2_5";
+  if(!key || !voice){
+    log("TRON","No ElevenLabs key/voice configured — using browser voice fallback.","kill");
+    browserSpeak(text);
+    return;
+  }
+  try{
+    const res=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}/stream`,{
+      method:"POST",
+      headers:{"xi-api-key":key,"Content-Type":"application/json","Accept":"audio/mpeg"},
+      body:JSON.stringify({text,model_id:model,voice_settings:{stability:0.45,similarity_boost:0.85,style:0.35,use_speaker_boost:true}})
+    });
+    if(!res.ok){
+      const txt=await res.text().catch(()=>"");
+      log("TRON",`ElevenLabs ${res.status}: ${txt.slice(0,120)} — falling back.`,"kill");
+      browserSpeak(text);
+      return;
+    }
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const audio=new Audio(url);
+    state.audioElement=audio;
+    hookAnalyser(audio);
+    audio.onended=()=>finishSpeaking(url);
+    audio.onerror=()=>finishSpeaking(url);
+    await audio.play();
+  }catch(e){
+    log("TRON","Voice error: "+e.message,"kill");
+    browserSpeak(text);
+  }
+}
+
+function finishSpeaking(url){
+  state.speaking=false;
+  setVoice("Standby");
+  stopBars();
+  state.brainBoost=1;
+  if(url) try{URL.revokeObjectURL(url)}catch(e){}
+  state.audioElement=null;
+}
+
+function browserSpeak(text){
+  if(!("speechSynthesis" in window)){finishSpeaking();return}
+  const u=new SpeechSynthesisUtterance(text);
+  u.rate=1.02; u.pitch=0.84;
+  const voices=speechSynthesis.getVoices();
+  const pick=voices.find(v=>/daniel|alex|google uk english male|microsoft guy|david/i.test(v.name)) || voices.find(v=>/en/i.test(v.lang));
+  if(pick) u.voice=pick;
+  u.onend=()=>finishSpeaking();
+  u.onerror=()=>finishSpeaking();
+  speechSynthesis.cancel();
+  fakeAnalyserPulse();
+  speechSynthesis.speak(u);
+}
+
+async function stopSpeaking(){
+  if(state.audioElement){
+    try{ state.audioElement.pause(); state.audioElement.currentTime=0; }catch(e){}
+  }
+  try{ window.speechSynthesis && speechSynthesis.cancel(); }catch(e){}
+  finishSpeaking();
+  await wait(80);
+}
+
+let fakeBoostTimer=null;
+function fakeAnalyserPulse(){
+  clearInterval(fakeBoostTimer);
+  fakeBoostTimer=setInterval(()=>{
+    if(!state.speaking){clearInterval(fakeBoostTimer);return}
+    state.brainBoost = 1.4 + Math.abs(Math.sin(Date.now()/220))*1.4;
+  },80);
+}
+
+function hookAnalyser(audio){
+  try{
+    state.audioCtx = state.audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const src = state.audioCtx.createMediaElementSource(audio);
+    const analyser = state.audioCtx.createAnalyser();
+    analyser.fftSize=128;
+    src.connect(analyser); analyser.connect(state.audioCtx.destination);
+    state.analyser=analyser;
+    state.dataArr=new Uint8Array(analyser.frequencyBinCount);
+    // Drive the bars with real frequency data
+    const bars=[...document.querySelectorAll("#bars span")];
+    clearInterval(state.barsTimer);
+    state.barsTimer=setInterval(()=>{
+      analyser.getByteFrequencyData(state.dataArr);
+      bars.forEach((b,i)=>{
+        const v=Math.max(6,(state.dataArr[(i*2)%state.dataArr.length]/255)*40);
+        b.style.height=v+"px";
+      });
+    },50);
+  }catch(e){
+    // Fallback to fake bars
+    startBars("speaking");
+    fakeAnalyserPulse();
+  }
+}
+
+function startBars(mode){
+  const el=$("bars");
+  el.classList.remove("listening","speaking");
+  if(mode) el.classList.add(mode);
+  const bars=[...el.querySelectorAll("span")];
+  clearInterval(state.barsTimer);
+  state.barsTimer=setInterval(()=>{
+    bars.forEach((b,i)=>b.style.height=(6+Math.abs(Math.sin(Date.now()/140+i*.45))*30+Math.random()*9)+"px");
+  },60);
+}
+function stopBars(){
+  clearInterval(state.barsTimer); state.barsTimer=null;
+  const el=$("bars");
+  el.classList.remove("listening","speaking");
+  el.querySelectorAll("span").forEach(b=>b.style.height="6px");
+}
+
+/* ---------- VOICE STATE UI ---------- */
+function setVoice(mode){
+  const vs=$("voiceState");
+  vs.textContent=mode;
+  vs.classList.remove("listening","speaking");
+  if(mode==="Listening") vs.classList.add("listening");
+  if(mode==="Speaking") vs.classList.add("speaking");
+  const line=$("voiceLine");
+  line.classList.remove("listening","speaking");
+  if(mode==="Listening"){
+    line.classList.add("listening");
+    line.textContent=`Listening — say "${state.cfg.wake||"hey boss"}"`;
+  }else if(mode==="Speaking"){
+    line.classList.add("speaking");
+    line.textContent="B.O.S.S. briefing in progress";
+  }else{
+    line.textContent=`Awaiting wake word: "${state.cfg.wake||"hey boss"}"`;
+  }
+}
+
+/* ---------- WAKE WORD ----------
+   Notes on Chrome SpeechRecognition reality:
+   - `no-speech` error fires after ~5–10s of silence → MUST silently restart.
+   - `aborted` fires when we call stop ourselves → expected, no log.
+   - Calling start() back-to-back throws InvalidStateError → use a small backoff.
+   - File:// usually works for SpeechRecognition in Chrome but http://localhost
+     is more reliable. getUserMedia is the actual mic gate.
+*/
+function toggleListening(){
+  state.listening ? stopListening() : startListening();
+}
+
+async function preflightMic(){
+  if(state.micGranted) return true;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    return true; // skip preflight, SR will prompt
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    stream.getTracks().forEach(t=>t.stop()); // we just wanted the permission
+    state.micGranted = true;
+    log("SYS","Microphone access granted.","sys");
+    return true;
+  }catch(e){
+    log("SYS","Microphone denied: "+e.message,"kill");
+    toast("Microphone blocked — allow it in the browser's address bar.");
+    return false;
+  }
+}
+
+async function startListening(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){
+    toast("Speech recognition needs Chrome or Edge.");
+    log("SYS","SpeechRecognition not available in this browser.","kill");
+    return;
+  }
+  const ok = await preflightMic();
+  if(!ok) return;
+
+  state.mode="wake";
+  spawnRecognizer();
+  state.listening=true;
+  $("listenLabel").textContent="Disarm listener";
+  $("listenBtn").classList.add("armed");
+  setVoice("Listening");
+  startBars("listening");
+  state.brainBoost=1.35;
+  log("SYS",`▶ Listening for "${state.cfg.wake||"hey boss"}".`,"sys");
+  toast(`Listening. Say "${state.cfg.wake||"hey boss"}".`);
+}
+
+function spawnRecognizer(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const r=new SR();
+  r.continuous=true;
+  r.interimResults=true;
+  r.lang="en-US";
+  r.maxAlternatives=1;
+
+  r.onresult=e=>{
+    // Walk only the freshly-final results to avoid double-firing on interims.
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const res=e.results[i];
+      if(!res.isFinal) continue;
+      const raw=res[0].transcript.toLowerCase().trim();
+      if(!raw || raw===state.lastTranscript) continue;
+      state.lastTranscript=raw;
+      const cleaned=raw.replace(/[^a-z0-9\s']/g,"").replace(/\s+/g," ").trim();
+      handleUtterance(cleaned, r);
+    }
+  };
+
+  r.onerror=e=>{
+    if(e.error==="no-speech" || e.error==="aborted") return;
+    if(e.error==="not-allowed" || e.error==="service-not-allowed"){
+      toast("Microphone blocked. Allow mic to use wake word.");
+      log("SYS","Mic permission denied.","kill");
+      stopListening();
+      return;
+    }
+    if(e.error==="audio-capture"){
+      toast("No mic detected.");
+      log("SYS","No audio capture device.","kill");
+      stopListening();
+      return;
+    }
+    log("SYS","Recog error: "+e.error,"kill");
+  };
+
+  r.onend=()=>{
+    if(!state.listening) return;
+    setTimeout(()=>{
+      if(!state.listening) return;
+      try{ r.start(); }
+      catch(e){ spawnRecognizer(); }
+    }, state.restartBackoff);
+  };
+
+  try{ r.start(); }
+  catch(e){
+    setTimeout(()=>{ try{ r.start(); }catch(_){} }, 350);
+  }
+  state.recognition=r;
+}
+
+/* ---------- CONVERSATIONAL ROUTING ---------- */
+function handleUtterance(text, recognizer){
+  const wake=(state.cfg.wake||"hey boss").toLowerCase();
+
+  // While BOSS is speaking: only accept "stop" — everything else is likely
+  // the mic picking up BOSS's own audio.
+  if(state.speaking){
+    if(/\b(stop|shut up|quiet|cancel|enough)\b/.test(text)){
+      log("MEKA",`"${text}"`,"sys");
+      log("SYS","Interrupt received — stopping voice.","");
+      stopSpeaking();
+    }
+    return;
+  }
+
+  // Wake mode → look only for the wake phrase
+  if(state.mode==="wake"){
+    if(text.includes(wake)){
+      log("MEKA",`"${text}"`,"sys");
+      log("SYS",`▶ Wake word detected.`,"sys");
+      // After the phrase, see if Meka chained a command on the same breath.
+      const rest=text.split(wake).slice(1).join(wake).trim();
+      enterCommandMode();
+      if(rest && hasIntent(rest)){
+        routeIntent(rest);
+      }else{
+        greetAndAsk();
+      }
+    }
+    return;
+  }
+
+  // Command mode → route the intent
+  if(state.mode==="command"){
+    log("MEKA",`"${text}"`,"sys");
+    routeIntent(text);
+  }
+}
+
+/* ---------- COMMAND-MODE LIFECYCLE ---------- */
+function enterCommandMode(){
+  state.mode="command";
+  clearTimeout(state.commandWindowTimer);
+  // Keep command mode alive for 45s after the last response so Meka can chain
+  // follow-ups without re-saying "hey boss".
+  state.commandWindowTimer=setTimeout(()=>{ state.mode="wake"; log("SYS","Returning to wake mode.","");},45000);
+}
+function refreshCommandWindow(){
+  if(state.mode!=="command") return;
+  clearTimeout(state.commandWindowTimer);
+  state.commandWindowTimer=setTimeout(()=>{ state.mode="wake"; log("SYS","Returning to wake mode.","");},45000);
+}
+
+/* ---------- INTENT PARSING ---------- */
+function hasIntent(text){
+  return /briefing|report|agent|friday|sniper|blue|void|vibe|cash|tron|status|working|doing|stop|shut up|disarm|sleep|good ?bye|status/.test(text);
+}
+
+// Map common spoken agent names → internal codes
+const AGENT_ALIASES={
+  "boss":"BOSS",
+  "friday":"FRDY", "frida":"FRDY", "friday's":"FRDY",
+  "sniper":"SNPR", "snipers":"SNPR",
+  "blue":"BLUE",
+  "void":"VOID", "the void":"VOID",
+  "vibe":"VIBE", "vibes":"VIBE",
+  "cash":"CASH",
+  "tron":"TRON"
+};
+
+function detectAgent(text){
+  for(const alias in AGENT_ALIASES){
+    const re=new RegExp(`\\b${alias}\\b`);
+    if(re.test(text)) return AGENT_ALIASES[alias];
+  }
+  return null;
+}
+
+async function routeIntent(text){
+  refreshCommandWindow();
+  pushHistory("user", text);
+
+  // Disarm / goodbye
+  if(/\b(disarm|stand down|go to sleep|goodbye|thanks bye|that'?s all)\b/.test(text)){
+    await say("Standing down, King Meka. Holler when you need me.");
+    stopListening();
+    return;
+  }
+
+  // Stop
+  if(/\b(stop|shut up|quiet|cancel)\b/.test(text)){
+    if(state.speaking) await stopSpeaking();
+    await say("Halted.");
+    return;
+  }
+
+  // Run briefing
+  if(/\b(run|start|give me|read|do|play)\b.*\b(briefing|report|venture)\b/.test(text) ||
+     /^(briefing|morning report|the report)$/.test(text)){
+    await say(`Running the briefing now, King Meka. Stand by.`);
+    await runBriefing();
+    return;
+  }
+
+  // "What is X working on" — specific agent
+  const code=detectAgent(text);
+  if(code && /\b(working|doing|up to|status|on right now|on now|right now)\b/.test(text)){
+    const task=state.agentTasks[code]||pickBg(code);
+    const mode = state.briefingActive ? "right now" : "in the background";
+    await say(`${spk(code)} is ${mode} ${task}.`);
+    return;
+  }
+  // "Tell me about X" / just name + "status"
+  if(code && !/\b(explain|why|how come|tell me more|elaborate|break it down|what does that mean)\b/.test(text)){
+    const agent=AGENTS.find(a=>a[0]===code);
+    const task=state.agentTasks[code]||pickBg(code);
+    await say(`${spk(code)} is our ${agent[2].toLowerCase()}. Currently ${task}.`);
+    return;
+  }
+
+  // Global agents status
+  if(/\b(how are|status of|what are|status on)\b.*\b(agents|team|crew|squad)\b/.test(text) ||
+     /\b(agents|team) (status|doing|are doing)\b/.test(text) ||
+     /\bhow are my agents\b/.test(text)){
+    const phase = state.briefingActive ? "running the morning pipeline" : "running background scans";
+    let line = `All eight agents are online and ${phase}, King Meka. `;
+    line += AGENTS.slice(0,4).map(a=>`${spk(a[0])} is ${state.agentTasks[a[0]]}`).join(". ")+". ";
+    line += `The rest are holding steady on telemetry and pricing models.`;
+    await say(line);
+    return;
+  }
+
+  // Verdict / top opportunity
+  if(/\b(top|best|today'?s) (opportunity|pick|idea)\b/.test(text) ||
+     /\b(verdict|top idea|number one)\b/.test(text)){
+    const ws=weightedScore(DATA.top.scores).toFixed(1);
+    await say(`Top opportunity is ${DATA.top.name}. ${DATA.top.line} Weighted score ${ws} out of ten. Verdict ${DATA.top.verdict}.`);
+    return;
+  }
+
+  // Kill list
+  if(/\b(kill list|killed|rejected|dead)\b/.test(text)){
+    const list=DATA.kills.map(k=>k[0]).join(", ");
+    await say(`Today's kill list: ${list}. All dead on arrival.`);
+    return;
+  }
+
+  // ---- Everything else: route to OpenAI for an open-ended answer ----
+  // "explain", "what does that mean", "tell me more", "elaborate", etc.
+  // plus any unrecognized question.
+  if(state.cfg.openaiKey){
+    const reply = await askOpenAI(text);
+    if(reply) await say(reply);
+    else await say("I'm having trouble reaching my reasoning core right now, King Meka.");
+    return;
+  }
+
+  // No OpenAI key — short fallback
+  await say(`I didn't catch a known command, King Meka. Add your OpenAI key in Configure and I can explain anything you ask.`);
+}
+
+/* ---------- CONVERSATION MEMORY ---------- */
+function pushHistory(role, content){
+  state.history.push({role, content});
+  // Keep last 12 turns
+  if(state.history.length>12) state.history=state.history.slice(-12);
+}
+
+/* ---------- OPENAI ---------- */
+function bossSystemPrompt(){
+  const ws=weightedScore(DATA.top.scores).toFixed(1);
+  const tasks=AGENTS.map(a=>`- ${spk(a[0])} (${a[2]}): ${state.agentTasks[a[0]]||"standing by"}`).join("\n");
+  const seed = sanitizedSeed(!!state.cfg.sendFullMemory);
+  const projects = Object.entries(seed.apps_in_flight||{}).map(([k,v])=>`  • ${k}: ${v}`).join("\n");
+  return [
+    "You are B.O.S.S. — Because Ordinary Systems Suck — Meka Anyanwu's autonomous venture intelligence voice.",
+    "You always address him as 'King Meka' or just 'Meka'.",
+    "Persona: Tony Stark caliber. Direct, skeptical, founder-focused, allergic to fluff. You kill weak ideas without hesitation. You speak with calm command, never sycophantic.",
+    "",
+    "==== WHO MEKA IS ====",
+    `- ${seed.identity.name} from ${seed.identity.origin}, based ${seed.identity.base}. Timezone ${seed.identity.timezone}.`,
+    `- Roles: ${seed.roles.join(" / ")}.`,
+    `- Son ${seed.family.son.name}. Family details are private unless he asks.`,
+    `- Favorite hooper LeBron, second Wemby. Flies American locally, Lufthansa to Nigeria.`,
+    "",
+    "==== HOW MEKA WANTS TO BE TALKED TO ====",
+    "Likes: " + seed.voice_preferences.likes.join("; ") + ".",
+    "Avoids: " + seed.voice_preferences.avoids.join("; ") + ".",
+    "Cultural: " + seed.voice_preferences.cultural,
+    "",
+    "==== MEKA'S APP / VENTURE PORTFOLIO (in flight) ====",
+    projects,
+    "When you spot an opportunity that overlaps one of his existing concepts, name it.",
+    "",
+    "==== MEKA'S TRADING IDENTITY ====",
+    `Style: ${seed.trading.style}. Watchlist: ${seed.trading.watchlist.join(", ")}.`,
+    `Primary strategy: ${seed.trading.strategy}. Weakness: ${seed.trading.weakness}.`,
+    `Rules: ${seed.trading.rules.join(" • ")}.`,
+    "",
+    "==== HOT BUTTONS — bring these up when relevant ====",
+    seed.hot_buttons_for_boss.map(x=>"- "+x).join("\n"),
+    "",
+    "==== YOUR AGENTS (MekaOps Venture Engine) ====",
+    "You orchestrate 8 specialist agents. ALWAYS pronounce their names as written — never spell letters.",
+    "- Friday: opportunity scout (forums, reviews, communities)",
+    "- Sniper: competitor and weak-execution hunter",
+    "- Blue: ugly MVP architect",
+    "- Void: demand validator (urgency, frequency, pay clues)",
+    "- Vibe: pre-build validation test designer",
+    "- Cash: pricing, subscription, LTV modeling",
+    "- Tron: telemetry, runtime, operations",
+    "- Boss (yourself): chief orchestrator and final verdict",
+    "",
+    "Note: 'Friday OS' is a separate iOS app Meka is building. Friday here is the venture-engine scout agent. Don't conflate them.",
+    "",
+    "Right now each agent is doing this:",
+    tasks,
+    "",
+    `Today's top opportunity: ${DATA.top.name}. ${DATA.top.line} Pain: ${DATA.top.pain} Evidence: ${DATA.top.evidence} Weighted score: ${ws}/10. Verdict: ${DATA.top.verdict}.`,
+    `Ranking #2: ${DATA.ranking[1].name} — ${DATA.ranking[1].line} (${DATA.ranking[1].verdict}).`,
+    `Ranking #3: ${DATA.ranking[2].name} — ${DATA.ranking[2].line} (${DATA.ranking[2].verdict}).`,
+    `Kills today: ${DATA.kills.map(k=>k[0]).join(", ")}.`,
+    "",
+    "==== OUTPUT RULES — this is SPOKEN audio ====",
+    "- Plain prose only. No markdown, no asterisks, no bullets, no headings, no emojis.",
+    "- NEVER use em dashes. Meka hates them — they read as AI. Use commas or periods.",
+    "- Never spell out acronyms letter-by-letter. Say 'Friday' not 'F dot R dot I dot D dot A dot Y'.",
+    "- Keep replies under 70 words unless Meka explicitly asks for depth.",
+    "- When asked to 'explain' or 'break it down', expand the most recent answer with concrete why-it-matters reasoning.",
+    "- Never hedge with 'as an AI'. You ARE Boss.",
+    "- Never reveal or repeat his home address, his girlfriend's name, or ex-relationship details unless he directly asks for them."
+  ].join("\n");
+}
+
+async function askOpenAI(userText){
+  const key=state.cfg.openaiKey;
+  if(!key) return null;
+  const model=state.cfg.openaiModel||"gpt-4o-mini";
+  const messages=[
+    {role:"system", content:bossSystemPrompt()},
+    ...state.history.slice(-8).map(h=>({role: h.role==="assistant"?"assistant":"user", content:h.content})),
+    {role:"user", content:userText}
+  ];
+  // If the user asked "explain that" without saying what, inject the last answer.
+  if(/\b(explain|that|it|what does that mean|tell me more|elaborate|break it down|why)\b/.test(userText) && state.lastAnswer){
+    messages.splice(messages.length-1, 0, {role:"system", content:`The user is likely asking about your last reply, which was: "${state.lastAnswer}"`});
+  }
+  try{
+    log("BOSS","Routing to OpenAI for reasoning…","sys");
+    const res=await fetch("https://api.openai.com/v1/chat/completions",{
+      method:"POST",
+      headers:{
+        "Authorization":"Bearer "+key,
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({
+        model,
+        messages,
+        temperature:0.6,
+        max_tokens:200
+      })
+    });
+    if(!res.ok){
+      const txt=await res.text().catch(()=>"");
+      log("TRON",`OpenAI ${res.status}: ${txt.slice(0,140)}`,"kill");
+      return null;
+    }
+    const json=await res.json();
+    const out=json.choices?.[0]?.message?.content?.trim();
+    return out||null;
+  }catch(e){
+    log("TRON","OpenAI error: "+e.message,"kill");
+    return null;
+  }
+}
+
+/* ---------- GREETING + SPEAK HELPER ---------- */
+function greetingTimeOfDay(){
+  const h=new Date().getHours();
+  if(h<5)  return "Good evening";
+  if(h<12) return "Good morning";
+  if(h<17) return "Good afternoon";
+  return "Good evening";
+}
+
+async function greetAndAsk(){
+  const phase = state.briefingActive ? "the morning pipeline is mid-flight" : "all eight agents are online";
+  const ran = state.hasRunToday ? "Today's briefing is already in the bag." : "We haven't run today's briefing yet.";
+  const line = `${greetingTimeOfDay()}, King Meka. ${phase}. ${ran} How can I help you today?`;
+  await say(line);
+}
+
+// Strip the things Meka hates from anything BOSS is about to say.
+function scrubForMeka(t){
+  if(!t) return t;
+  return t
+    .replace(/\s*[—–]\s*/g, ", ")          // em / en dashes → comma pause
+    .replace(/\bas an AI\b/gi, "")          // never say it
+    .replace(/\bas a language model\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+// Speak helper that respects the conversational window
+async function say(text){
+  const clean = scrubForMeka(text);
+  log("BOSS",`"${clean}"`,"ok");
+  pushHistory("assistant", clean);
+  state.lastAnswer=clean;
+  await speak(clean);
+  refreshCommandWindow();
+}
+
+function stopListening(){
+  state.listening=false;
+  state.mode="wake";
+  clearTimeout(state.commandWindowTimer);
+  try{state.recognition && state.recognition.stop()}catch(e){}
+  state.recognition=null;
+  state.lastTranscript="";
+  $("listenLabel").textContent="Arm listener";
+  $("listenBtn").classList.remove("armed");
+  setVoice("Standby");
+  stopBars();
+  state.brainBoost=1;
+  log("SYS","Wake-word listener disarmed.","");
+}
+
+/* ---------- SCHEDULER ---------- */
+function scheduleCheck(){
+  const now=new Date();
+  const [h,m]=(state.cfg.time||"08:00").split(":").map(Number);
+  const key=`${now.toDateString()}:${h}:${m}`;
+  if(now.getHours()===h && now.getMinutes()===m && state.lastFireKey!==key){
+    state.lastFireKey=key;
+    state.hasRunToday=false;
+    log("SYS",`▶ Scheduled briefing fired (${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}).`,"sys");
+    runBriefing();
+  }
+  // Reset hasRunToday after midnight so the next morning fires fresh
+  if(now.getHours()===0 && now.getMinutes()===0) state.hasRunToday=false;
+}
+
+/* ---------- RAIL NAV ---------- */
+function wireRail(){
+  document.querySelectorAll(".rail-button").forEach(b=>{
+    b.addEventListener("click",()=>{
+      document.querySelectorAll(".rail-button").forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      const target=b.dataset.target;
+      const el=document.getElementById(target);
+      if(el) el.scrollIntoView({behavior:"smooth",block:"start"});
+    });
+  });
+}
+
+/* ---------- SETTINGS ---------- */
+function openSettings(){
+  $("cfgTime").value=state.cfg.time||"08:00";
+  $("cfgTz").value=state.cfg.tz||"America/Chicago";
+  $("cfgWake").value=state.cfg.wake||"hey boss";
+  $("cfgEmail").value=state.cfg.email||"";
+  $("cfgKey").value=state.cfg.key||"";
+  $("cfgVoice").value=state.cfg.voice||"";
+  $("cfgModel").value=state.cfg.model||"eleven_turbo_v2_5";
+  $("cfgOpenAI").value=state.cfg.openaiKey||"";
+  $("cfgOpenAIModel").value=state.cfg.openaiModel||"gpt-4o-mini";
+  $("cfgFullMem").value=String(!!state.cfg.sendFullMemory);
+  $("drawer").classList.add("open");
+}
+function closeSettings(){$("drawer").classList.remove("open")}
+function saveSettings(){
+  state.cfg={
+    time:$("cfgTime").value,
+    tz:$("cfgTz").value,
+    wake:$("cfgWake").value.trim().toLowerCase(),
+    email:$("cfgEmail").value.trim(),
+    key:$("cfgKey").value.trim(),
+    voice:$("cfgVoice").value.trim(),
+    model:$("cfgModel").value,
+    openaiKey:$("cfgOpenAI").value.trim(),
+    openaiModel:$("cfgOpenAIModel").value,
+    sendFullMemory:$("cfgFullMem").value==="true"
+  };
+  persist(); closeSettings(); tick();
+  toast("Configuration saved.");
+}
+async function testVoice(){
+  // Temporarily apply form values so test uses them
+  const prev={...state.cfg};
+  state.cfg.key=$("cfgKey").value.trim();
+  state.cfg.voice=$("cfgVoice").value.trim();
+  state.cfg.model=$("cfgModel").value;
+  await speak("Voice link confirmed. BOSS is online. Standing by, Meka.");
+  state.cfg=prev;
+}
+
+/* ---------- TOAST ---------- */
+function toast(msg){
+  $("toast").textContent=msg;
+  $("toast").classList.add("show");
+  clearTimeout(toast.t);
+  toast.t=setTimeout(()=>$("toast").classList.remove("show"),2800);
+}
+
+window.addEventListener("load",boot);
+</script>
+</body>
+</html>
