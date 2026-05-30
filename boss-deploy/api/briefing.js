@@ -259,14 +259,31 @@ async function sendEmail(briefing, scoutPacket) {
   return { sent: true };
 }
 
-/* ---------- VERCEL KV (Upstash REST) ---------- */
-// Writes today's briefing so /api/latest can serve it without regenerating.
+/* ---------- VERCEL KV / UPSTASH REDIS (auto-detect) ----------
+   Vercel renamed KV → Marketplace (Upstash) in 2024. Different naming.
+   Try every common variant so this works regardless of how the user
+   connected the database. */
+function kvUrl(){
+  return process.env.KV_REST_API_URL
+      || process.env.UPSTASH_REDIS_REST_URL
+      || process.env.REDIS_REST_API_URL
+      || process.env.STORAGE_REST_API_URL
+      || null;
+}
+function kvToken(){
+  return process.env.KV_REST_API_TOKEN
+      || process.env.UPSTASH_REDIS_REST_TOKEN
+      || process.env.REDIS_REST_API_TOKEN
+      || process.env.STORAGE_REST_API_TOKEN
+      || null;
+}
 async function kvCmd(cmd){
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return null;
-  const res = await fetch(process.env.KV_REST_API_URL, {
+  const url=kvUrl(), token=kvToken();
+  if (!url || !token) return null;
+  const res = await fetch(url, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.KV_REST_API_TOKEN}`,
+      "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify(cmd)
@@ -327,6 +344,16 @@ export default async function handler(req) {
     };
     const persisted = await persistBriefing(payload);
     payload.persisted_to_kv = persisted;
+    payload.debug_env = {
+      has_kv_url: !!process.env.KV_REST_API_URL,
+      has_kv_token: !!process.env.KV_REST_API_TOKEN,
+      has_upstash_url: !!process.env.UPSTASH_REDIS_REST_URL,
+      has_upstash_token: !!process.env.UPSTASH_REDIS_REST_TOKEN,
+      has_redis_url: !!process.env.REDIS_REST_API_URL,
+      has_storage_url: !!process.env.STORAGE_REST_API_URL,
+      resolved_url: kvUrl() ? "found" : "MISSING",
+      resolved_token: kvToken() ? "found" : "MISSING"
+    };
     return new Response(JSON.stringify(payload, null, 2), {
       status: 200,
       headers: { "Content-Type": "application/json" }
