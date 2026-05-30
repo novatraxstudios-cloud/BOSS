@@ -15,9 +15,7 @@
     }
   ],
   "crons": [
-    {
-      "path": "/api/briefing",
-      "schedule": "0 13 * * *"
-    }
+    { "path": "/api/briefing", "schedule": "0 13 * * *" },
+    { "path": "/api/digest",   "schedule": "0 14 * * 0" }
   ]
 }
