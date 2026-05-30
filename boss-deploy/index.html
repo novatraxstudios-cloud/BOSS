@@ -1044,9 +1044,11 @@ function boot(){
   }else{
     toast(`Ready. Press Arm listener and say "${state.cfg.wake}".`);
   }
-  // Pull today's autonomous briefing AND the shelf of past ideas
+  // Pull today's autonomous briefing, the shelf, AND the board in parallel
+  // so all three are ready before Meka asks for them.
   loadLiveBriefing();
   loadShelf();
+  loadBoard();
   // Preload synth voices on first gesture
   document.addEventListener("click",()=>{try{window.speechSynthesis&&speechSynthesis.getVoices();}catch(e){}},{once:true});
 }
@@ -1358,7 +1360,11 @@ function doneCard(name){
 /* ---------- IDEAS BOARD ----------
    Full briefing history pulled from Supabase via /api/board. */
 async function openBoard(){
-  $("boardBg").classList.add("open");
+  const el = $("boardBg");
+  if(!el){ log("SYS","Board overlay element missing","kill"); return; }
+  el.classList.add("open");
+  el.style.display = "flex";   // belt-and-suspenders: force the open state
+  log("SYS","▶ Ideas Board overlay opened.","sys");
   if(!state.board){
     await loadBoard();
   } else {
@@ -1366,7 +1372,10 @@ async function openBoard(){
   }
 }
 function closeBoard(){
-  $("boardBg").classList.remove("open");
+  const el = $("boardBg");
+  if(!el) return;
+  el.classList.remove("open");
+  el.style.display = "";        // clear the inline override so CSS controls again
 }
 
 async function loadBoard(){
@@ -2312,9 +2321,21 @@ async function routeIntent(text){
 
   // FAST PATH: ideas board / shelf / trading / digest — match BEFORE run-briefing
   // so "open the ideas board" doesn't get mistaken for a briefing run.
-  if(/\b(ideas board|open (the )?board|show (me )?(the )?board|venture board|the board)\b/.test(text)){
-    openBoard();
-    await say(`Opening the ideas board, King Meka. ${state.boardStats?.total||state.board?.length||"some"} briefings on file.`);
+  // Broadened regex to catch Chrome speech-recognition variants (idea/ideas/idea's/IDS).
+  const boardRe = /\b(idea[s'`]*\s*board|idea board|open (the |my |our )?(board|idea[s]?)|show (me )?(the |my |our )?(board|idea[s]?)|venture board|the board|my board|our board|the list|view (the |my )?(ideas|board))\b/;
+  if(boardRe.test(text)){
+    log("SYS","▶ Ideas Board intent matched.","sys");
+    // Open first, await, THEN speak — guarantees overlay is up before BOSS talks.
+    await openBoard();
+    // Compute deduped count so the spoken number matches what user sees on cards.
+    const seen = new Set();
+    let uniq = 0;
+    for(const b of (state.board||[])){
+      const k = (b.top_name||"").toLowerCase().trim();
+      if(k && !seen.has(k)){ seen.add(k); uniq++; }
+    }
+    const n = uniq || state.boardStats?.total || state.board?.length || 0;
+    await say(`Opening the ideas board, King Meka. ${n || "no"} ${n===1?"idea":"ideas"} on the board.`);
     return;
   }
   if(/\b(shelf|shelved|past ideas|previous ideas|build later|on the shelf|memory|history)\b/.test(text) && !/\b(briefing|report)\b/.test(text)){
@@ -2455,6 +2476,7 @@ async function routeIntent(text){
   // "explain", "what does that mean", "tell me more", "elaborate", etc.
   // plus any unrecognized question.
   if(state.cfg.openaiKey){
+    log("SYS",`No local intent matched · routing "${text}" to OpenAI`,"");
     const reply = await askOpenAI(text);
     if(reply) await say(reply);
     else await say("I'm having trouble reaching my reasoning core right now, King Meka.");
