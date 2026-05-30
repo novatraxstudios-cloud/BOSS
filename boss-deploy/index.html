@@ -387,6 +387,64 @@
   .approve-btn:hover{box-shadow:0 0 20px rgba(255,179,77,.45);transform:translateY(-1px)}
   .approve-btn:disabled{background:var(--muted);color:#1a0a00;cursor:wait;opacity:.7}
 
+  /* ===== ORG CHART OVERLAY ===== */
+  .org-bg{position:fixed;inset:0;background:rgba(0,0,0,.86);backdrop-filter:blur(8px);z-index:42;display:none;align-items:center;justify-content:center;padding:18px;overflow-y:auto}
+  .org-bg.open{display:flex}
+  .org{
+    width:min(1200px,100%); max-height:94vh;
+    border:1px solid var(--line);
+    background:radial-gradient(ellipse at center, rgba(28,232,255,.07), transparent 60%), var(--glass);
+    box-shadow:0 32px 100px rgba(0,0,0,.7), 0 0 100px rgba(28,232,255,.22), inset 0 0 60px rgba(28,232,255,.04);
+    backdrop-filter:blur(14px);
+    clip-path: polygon(0 18px, 18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  .org > header{
+    padding:18px 22px;border-bottom:1px solid var(--line-soft);
+    display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;
+    background:linear-gradient(90deg, rgba(28,232,255,.08), transparent 60%);
+  }
+  .org > header h2{margin:0;font-family:Inter;font-weight:900;font-size:20px;letter-spacing:.2em;text-transform:uppercase;color:#fff}
+  .org > header .sub{font-family:ui-monospace,monospace;color:var(--dim);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin-top:3px}
+  .org-canvas{flex:1;padding:20px 22px;min-height:560px;overflow:auto;position:relative}
+  .org-svg{width:100%;height:auto;display:block;min-height:520px;max-width:1100px;margin:0 auto}
+
+  /* Node base */
+  .org-node{cursor:pointer;transition:transform .15s}
+  .org-node:hover{transform:scale(1.05)}
+  .org-node .ring{fill:none;stroke:var(--line);stroke-width:1.2;opacity:.6}
+  .org-node .core{fill:rgba(2,12,23,.85);stroke:var(--line);stroke-width:1.4;filter:url(#nodeGlow)}
+  .org-node .code{font-family:ui-monospace,monospace;fill:var(--line);font-weight:900;font-size:11px;letter-spacing:.1em;text-anchor:middle;dominant-baseline:central;text-transform:uppercase}
+  .org-node .name{font-family:ui-monospace,monospace;fill:var(--ink);font-size:10px;letter-spacing:.14em;text-anchor:middle;text-transform:uppercase}
+  .org-node .role{font-family:ui-monospace,monospace;fill:var(--muted);font-size:9px;letter-spacing:.1em;text-anchor:middle;text-transform:uppercase}
+  .org-node.boss .core{fill:radial-gradient(circle, #fff, var(--line));stroke:#fff;stroke-width:2}
+  .org-node.boss .ring{stroke:var(--ember);stroke-width:1.5;opacity:.8}
+  .org-node.boss .code{fill:#fff;font-size:14px}
+  /* ACTIVE state during a briefing */
+  .org-node.active .core{stroke:var(--ember);stroke-width:2;filter:url(#nodeGlowActive)}
+  .org-node.active .code{fill:var(--ember)}
+  .org-node.active .ring{stroke:var(--ember);animation:nodeSpin 4s linear infinite}
+  .org-node.done .core{stroke:var(--ok);stroke-width:1.8}
+  .org-node.done .code{fill:var(--ok)}
+  .org-node.done .ring{stroke:var(--ok)}
+
+  /* Connections (data flow lines) */
+  .conn{fill:none;stroke:var(--line);stroke-width:1.4;opacity:.6;stroke-dasharray:6 6;animation:dataFlow 1.6s linear infinite}
+  .conn.gold{stroke:var(--ember);opacity:.7}
+  .conn.green{stroke:var(--ok);opacity:.6}
+  .conn.tron{stroke:rgba(28,232,255,.25);stroke-dasharray:2 5;stroke-width:1;animation:dataFlow 4s linear infinite}
+  @keyframes dataFlow{to{stroke-dashoffset:-24}}
+  @keyframes nodeSpin{to{transform:rotate(360deg)}}
+
+  /* Phase labels */
+  .phase-label{font-family:ui-monospace,monospace;fill:var(--muted);font-size:9px;letter-spacing:.2em;text-transform:uppercase}
+  .phase-bracket{stroke:rgba(28,232,255,.18);stroke-width:1;fill:none}
+
+  /* Legend at bottom of overlay */
+  .org-legend{padding:12px 22px 18px;border-top:1px solid rgba(28,232,255,.12);display:flex;gap:18px;flex-wrap:wrap;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.14em;color:var(--dim)}
+  .org-legend span{display:flex;align-items:center;gap:6px}
+  .org-legend i{display:inline-block;width:9px;height:9px;border-radius:50%}
+
   /* Detail modal — re-uses dossier styles but wider */
   .detail-bg{position:fixed;inset:0;background:rgba(0,0,0,.84);backdrop-filter:blur(8px);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
   .detail-bg.open{display:flex}
@@ -481,6 +539,7 @@
     <button class="rail-button" type="button" data-target="kill"><b>03</b>Kill</button>
     <button class="rail-button" type="button" data-target="mail"><b>04</b>Mail</button>
     <button class="rail-button" type="button" onclick="openBoard()" title="Ideas Board"><b>05</b>Board</button>
+    <button class="rail-button" type="button" onclick="openOrg()" title="Org Chart"><b>06</b>Org</button>
     <div class="rail-spacer"></div>
     <div class="rail-meter" title="Signal integrity"><div id="meterFill" style="position:absolute;left:0;right:0;bottom:0;height:68%;background:linear-gradient(180deg,var(--line),var(--ok));box-shadow:0 0 16px var(--line);transition:height .4s"></div></div>
   </aside>
@@ -577,6 +636,28 @@
     </section>
   </aside>
 </main>
+
+<!-- ===== Org Chart Overlay ===== -->
+<div class="org-bg" id="orgBg" onclick="if(event.target===this) closeOrg()">
+  <div class="org">
+    <header>
+      <div>
+        <h2>Agent Org Chart</h2>
+        <div class="sub">MekaOps Venture Engine · pipeline topology</div>
+      </div>
+      <button class="close" type="button" onclick="closeOrg()" style="background:transparent;border:1px solid var(--line-soft);color:var(--ink);width:36px;height:36px;display:grid;place-items:center;cursor:pointer;clip-path:polygon(0 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%)">✕</button>
+    </header>
+    <div class="org-canvas" id="orgCanvas">
+      <!-- SVG built dynamically by renderOrgChart() so it reflects live agent state -->
+    </div>
+    <div class="org-legend">
+      <span><i style="background:var(--line)"></i>STANDBY</span>
+      <span><i style="background:var(--ember)"></i>ACTIVE</span>
+      <span><i style="background:var(--ok)"></i>COMPLETE</span>
+      <span style="margin-left:auto;color:var(--muted)">CLICK ANY NODE FOR AGENT DOSSIER · DATA FLOWS TOP TO BOTTOM</span>
+    </div>
+  </div>
+</div>
 
 <!-- ===== Ideas Board Overlay ===== -->
 <div class="board-bg" id="boardBg" onclick="if(event.target===this) closeBoard()">
@@ -1664,6 +1745,167 @@ function closeDetail(){
   $("detailBg").classList.remove("open");
 }
 
+/* ---------- ORG CHART ----------
+   8-agent pipeline topology rendered as SVG.
+   Nodes reflect current agent state (idle / active / done).
+   Click any node → opens that agent's dossier. */
+async function openOrg(){
+  const el = $("orgBg");
+  if(!el) return;
+  el.classList.add("open");
+  el.style.display = "flex";
+  log("SYS","▶ Org Chart opened.","sys");
+  renderOrgChart();
+}
+function closeOrg(){
+  const el = $("orgBg");
+  if(!el) return;
+  el.classList.remove("open");
+  el.style.display = "";
+}
+
+function renderOrgChart(){
+  // Node positions in the SVG coordinate space (viewBox 0 0 1000 700)
+  const NODES = [
+    { code:"BOSS",  spoken:"Boss",    role:"Chief Decision",  x:500, y: 80, r:46, primary:true },
+    { code:"TRON",  spoken:"Tron",    role:"Telemetry",       x:880, y:200, r:36 },
+    { code:"FRDY",  spoken:"Friday",  role:"Opportunity Scout", x:500, y:220, r:38 },
+    { code:"VOID",  spoken:"Void",    role:"Demand Validator",  x:330, y:360, r:36 },
+    { code:"SNPR",  spoken:"Sniper",  role:"Competitor Hunter", x:670, y:360, r:36 },
+    { code:"BLUE",  spoken:"Blue",    role:"MVP Architect",     x:220, y:500, r:34 },
+    { code:"CASH",  spoken:"Cash",    role:"Pricing & LTV",     x:500, y:500, r:34 },
+    { code:"VIBE",  spoken:"Vibe",    role:"Validation Tests",  x:780, y:500, r:34 },
+    { code:"BOSSv", spoken:"Boss",    role:"Final Verdict",     x:500, y:640, r:42, primary:true, mirror:"BOSS" }
+  ];
+
+  // Pipeline connections (data flow). BOSS_top → FRIDAY → VOID+SNIPER → BLUE+CASH+VIBE → BOSS_bottom
+  const CONNS = [
+    ["BOSS","FRDY","gold"],
+    ["FRDY","VOID",""],
+    ["FRDY","SNPR",""],
+    ["VOID","BLUE",""],
+    ["VOID","CASH",""],
+    ["SNPR","CASH",""],
+    ["SNPR","VIBE",""],
+    ["BLUE","BOSSv","green"],
+    ["CASH","BOSSv","green"],
+    ["VIBE","BOSSv","green"],
+    // TRON monitoring lines (thin dotted)
+    ["TRON","BOSS","tron"],
+    ["TRON","FRDY","tron"],
+    ["TRON","VOID","tron"],
+    ["TRON","SNPR","tron"],
+    ["TRON","BLUE","tron"],
+    ["TRON","CASH","tron"],
+    ["TRON","VIBE","tron"],
+    ["TRON","BOSSv","tron"]
+  ];
+
+  const findNode = code => NODES.find(n => n.code === code);
+  const stateFor = code => {
+    const real = code === "BOSSv" ? "BOSS" : code;
+    return state.agentState?.[real]?.status || "IDLE";
+  };
+  const taskFor = code => {
+    const real = code === "BOSSv" ? "BOSS" : code;
+    return state.agentTasks?.[real] || state.agentState?.[real]?.current || "standing by";
+  };
+  const escAttr = s => String(s||"").replace(/"/g,"&quot;");
+
+  // Build paths
+  let pathSvg = "";
+  for(const [from, to, klass] of CONNS){
+    const a = findNode(from), b = findNode(to);
+    if(!a || !b) continue;
+    // Approach the edge of the destination circle, not its center, so the line
+    // tucks neatly against the node ring.
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    const sx = a.x + (dx/len) * a.r;
+    const sy = a.y + (dy/len) * a.r;
+    const ex = b.x - (dx/len) * (b.r + 4);
+    const ey = b.y - (dy/len) * (b.r + 4);
+    // Slight curve for prettier flow
+    const mx = (sx+ex)/2, my = (sy+ey)/2 + (klass==="tron" ? 0 : (a.y < b.y ? 18 : -18));
+    pathSvg += `<path class="conn ${klass}" d="M ${sx} ${sy} Q ${mx} ${my} ${ex} ${ey}"/>`;
+  }
+
+  // Build nodes
+  let nodeSvg = "";
+  for(const n of NODES){
+    const status = stateFor(n.code);
+    const cls = (status === "ACTIVE" ? "active" : status === "DONE" ? "done" : "") + (n.primary ? " boss" : "");
+    nodeSvg += `<g class="org-node ${cls}" onclick="closeOrg();setTimeout(()=>openDossier('${n.code==='BOSSv'?'BOSS':n.code}'),120)" data-code="${n.code}">
+      <circle class="ring" cx="${n.x}" cy="${n.y}" r="${n.r+10}"/>
+      <circle class="ring" cx="${n.x}" cy="${n.y}" r="${n.r+4}" stroke-dasharray="3 4"/>
+      <circle class="core" cx="${n.x}" cy="${n.y}" r="${n.r}"/>
+      <text class="code" x="${n.x}" y="${n.y}">${n.code.replace("v","")}</text>
+      <text class="name" x="${n.x}" y="${n.y + n.r + 18}">${n.spoken.toUpperCase()}</text>
+      <text class="role" x="${n.x}" y="${n.y + n.r + 32}">${n.role.toUpperCase()}</text>
+      <title>${escAttr(n.spoken)} — ${escAttr(n.role)}\n${escAttr(taskFor(n.code))}</title>
+    </g>`;
+  }
+
+  // Phase brackets / labels at the left
+  const phaseSvg = `
+    <line class="phase-bracket" x1="60" y1="60"  x2="60" y2="160"/>
+    <text class="phase-label" x="50" y="110" transform="rotate(-90 50 110)">DISPATCH</text>
+    <line class="phase-bracket" x1="60" y1="180" x2="60" y2="290"/>
+    <text class="phase-label" x="50" y="240" transform="rotate(-90 50 240)">SCOUT</text>
+    <line class="phase-bracket" x1="60" y1="310" x2="60" y2="420"/>
+    <text class="phase-label" x="50" y="370" transform="rotate(-90 50 370)">ANALYZE</text>
+    <line class="phase-bracket" x1="60" y1="440" x2="60" y2="560"/>
+    <text class="phase-label" x="50" y="500" transform="rotate(-90 50 500)">ENGINEER</text>
+    <line class="phase-bracket" x1="60" y1="580" x2="60" y2="690"/>
+    <text class="phase-label" x="50" y="640" transform="rotate(-90 50 640)">VERDICT</text>
+  `;
+
+  $("orgCanvas").innerHTML = `
+    <svg class="org-svg" viewBox="0 0 1000 720" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3.5" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="nodeGlowActive" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <radialGradient id="reactorGrad">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="25%" stop-color="#9ff8ff"/>
+          <stop offset="55%" stop-color="#1ce8ff"/>
+          <stop offset="100%" stop-color="rgba(2,12,23,0)"/>
+        </radialGradient>
+      </defs>
+
+      ${phaseSvg}
+      ${pathSvg}
+      ${nodeSvg}
+
+      <!-- caption at top -->
+      <text x="500" y="30" class="phase-label" text-anchor="middle" fill="#1ce8ff" style="letter-spacing:.4em;font-size:11px">DAILY PIPELINE · TOP TO BOTTOM</text>
+    </svg>
+  `;
+}
+
+/* ---------- UNIVERSAL CLOSE ---------- */
+function getOpenOverlays(){
+  const map = {
+    "ideas board":   { open: $("boardBg")?.classList.contains("open"), close: closeBoard },
+    "detail":        { open: $("detailBg")?.classList.contains("open"), close: closeDetail },
+    "dossier":       { open: $("dossierBg")?.classList.contains("open"), close: closeDossier },
+    "settings":      { open: $("drawer")?.classList.contains("open"),    close: closeSettings },
+    "org chart":     { open: $("orgBg")?.classList.contains("open"),     close: closeOrg }
+  };
+  return Object.entries(map).filter(([_,v])=>v.open).map(([k,v])=>({name:k, close:v.close}));
+}
+function closeEverything(){
+  const opened = getOpenOverlays();
+  opened.forEach(o => o.close());
+  return opened.map(o=>o.name);
+}
+
 /* ---------- SHELF FETCH ----------
    Pulls the list of previously-pitched (VALIDATE/WATCH) ideas from Supabase
    so BOSS knows what we've already looked at and won't repeat himself. */
@@ -2316,6 +2558,50 @@ async function routeIntent(text){
     state.pausedText = "";
     state.pausedFraction = 0;
     await say("Halted.");
+    return;
+  }
+
+  // FAST PATH: navigation (close / open / show) — handled before everything else
+  // so "close the board" doesn't accidentally trigger another open.
+  if(/\b(close|dismiss|exit|hide|go back|back to home|back home|never ?mind|nevermind|cancel that)\b/.test(text)){
+    const opened = getOpenOverlays();
+    if(opened.length === 0){
+      await say("Nothing's open, King Meka.");
+      return;
+    }
+    // Targeted close
+    if(/\b(board|ideas)\b/.test(text) && opened.find(o=>o.name==="ideas board")){
+      closeBoard(); await say("Board closed."); return;
+    }
+    if(/\b(settings|config|configure)\b/.test(text) && opened.find(o=>o.name==="settings")){
+      closeSettings(); await say("Settings closed."); return;
+    }
+    if(/\b(dossier|agent)\b/.test(text) && opened.find(o=>o.name==="dossier")){
+      closeDossier(); await say("Dossier closed."); return;
+    }
+    if(/\b(detail|deep dive|deep-dive)\b/.test(text) && opened.find(o=>o.name==="detail")){
+      closeDetail(); await say("Detail closed."); return;
+    }
+    if(/\b(org|chart|team|topology)\b/.test(text) && opened.find(o=>o.name==="org chart")){
+      closeOrg(); await say("Org chart closed."); return;
+    }
+    if(/\b(everything|all|every)\b/.test(text)){
+      const list = closeEverything();
+      await say(`Closed ${list.join(", ")}, King Meka.`);
+      return;
+    }
+    // Generic "close" — close whichever is on top (last opened)
+    const target = opened[opened.length - 1];
+    target.close();
+    await say(`${target.name.charAt(0).toUpperCase()+target.name.slice(1)} closed.`);
+    return;
+  }
+
+  // Open Org Chart
+  if(/\b(org chart|org ?chart|team chart|agent chart|topology|pipeline (chart|map|view)|show (me )?(the )?team|the team|org map)\b/.test(text)){
+    log("SYS","▶ Org Chart intent matched.","sys");
+    await openOrg();
+    await say(`Opening the org chart, King Meka. Eight agents online, four phases. Click any node for the dossier.`);
     return;
   }
 
