@@ -1402,13 +1402,32 @@ function renderBoard(){
     return;
   }
 
-  grid.innerHTML = filtered.map((b,i) => {
+  // Dedup by top_name — keep the latest run, count how many times an idea was evaluated.
+  const grouped = new Map();
+  for (const b of filtered) {
+    const key = (b.top_name||"").toLowerCase().trim();
+    if (!key) continue;
+    if (!grouped.has(key)) {
+      grouped.set(key, { ...b, _evals: 1 });
+    } else {
+      const existing = grouped.get(key);
+      existing._evals++;
+      // Keep the more recently generated row as the visible card
+      if (new Date(b.generated_at) > new Date(existing.generated_at)) {
+        grouped.set(key, { ...b, _evals: existing._evals });
+      }
+    }
+  }
+  const deduped = Array.from(grouped.values());
+
+  grid.innerHTML = deduped.map((b,i) => {
     const verdict = (b.top_verdict||"WATCH").toUpperCase();
     const date = new Date(b.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
     const score = Number(b.top_score||0).toFixed(1);
     const oneLine = (b.payload?.briefing?.top?.one_line || "").slice(0,160);
+    const evalBadge = b._evals > 1 ? `<span style="margin-left:8px;color:var(--muted);font-size:9px;letter-spacing:.16em">× ${b._evals} EVALS</span>` : "";
     return `<article class="board-card v-${verdict}" onclick="openDetail(${i})" data-idx="${i}">
-      <div class="top-row"><span class="date">${date}</span><span>${b.vertical||""}</span></div>
+      <div class="top-row"><span class="date">${date}${evalBadge}</span><span>${b.vertical||""}</span></div>
       <div class="name">${escapeHtml(b.top_name||"Untitled")}</div>
       <div class="one-line">${escapeHtml(oneLine)}</div>
       <div class="bottom-row">
@@ -1417,8 +1436,8 @@ function renderBoard(){
       </div>
     </article>`;
   }).join("");
-  // Store filtered order so openDetail(idx) can reach the right row
-  state.boardFiltered = filtered;
+  // Store deduped order so openDetail(idx) can reach the right row
+  state.boardFiltered = deduped;
 }
 
 function escapeHtml(s){
