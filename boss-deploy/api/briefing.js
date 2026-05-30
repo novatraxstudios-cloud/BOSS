@@ -430,12 +430,14 @@ async function fetchShelf() {
     const shelf = [];
     const seen = new Set();
     for (const row of rows) {
+      // Payload is { ok, vertical, sources, briefing:{...} }
       const payload = row.payload || {};
+      const briefing = payload.briefing || {};
       const items = [];
       if (row.top_verdict && row.top_verdict !== "KILL") {
-        items.push({ name: row.top_name, verdict: row.top_verdict, date: row.date, one_line: payload.top?.one_line||"" });
+        items.push({ name: row.top_name, verdict: row.top_verdict, date: row.date, one_line: briefing.top?.one_line||"" });
       }
-      for (const r2 of (payload.ranking || []).slice(1)) {
+      for (const r2 of (briefing.ranking || []).slice(1)) {
         if (r2.verdict && r2.verdict !== "KILL") {
           items.push({ name: r2.name, verdict: r2.verdict, date: row.date, one_line: r2.line||"" });
         }
@@ -707,14 +709,15 @@ async function persistBriefing(payload){
     generated_at: payload.generated_at || new Date().toISOString()
   };
 
-  // Upsert on date so re-running the same day overwrites instead of erroring
-  const res = await fetch(`${url}/rest/v1/briefings?on_conflict=date`, {
+  // Plain INSERT — every run creates a new row so the Ideas Board preserves
+  // history across multiple manual runs (cron once/day, but testing may run more).
+  const res = await fetch(`${url}/rest/v1/briefings`, {
     method: "POST",
     headers: {
       "apikey": key,
       "Authorization": `Bearer ${key}`,
       "Content-Type": "application/json",
-      "Prefer": "resolution=merge-duplicates,return=minimal"
+      "Prefer": "return=minimal"
     },
     body: JSON.stringify(row)
   });
