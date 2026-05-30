@@ -22,8 +22,8 @@
     --shadow:0 24px 90px rgba(0,0,0,.45);
   }
 
-  *{box-sizing:border-box}
-  html,body{margin:0;min-height:100%;background:var(--void);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-x:hidden}
+  *{box-sizing:border-box;min-width:0}
+  html,body{margin:0;min-height:100%;background:var(--void);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-x:hidden;max-width:100vw}
   body{
     background:
       radial-gradient(circle at 50% 24%, rgba(28,232,255,.18), transparent 22rem),
@@ -54,7 +54,7 @@
   button,input,select{font:inherit}
   button{cursor:pointer}
 
-  .app{position:relative;z-index:2;min-height:100vh;padding:18px;display:grid;grid-template-columns:236px minmax(0,1fr) 350px;gap:16px}
+  .app{position:relative;z-index:2;min-height:100vh;padding:18px;display:grid;grid-template-columns:236px minmax(0,1fr) 320px;gap:14px;max-width:100vw;overflow-x:hidden}
   .rail,.stage,.dossier,.card,.drawer{
     border:1px solid var(--line-soft);
     background:linear-gradient(145deg,rgba(28,232,255,.07),transparent 32%),var(--glass);
@@ -232,7 +232,11 @@
   .command.armed{border-color:var(--ember);box-shadow:0 0 14px rgba(255,179,77,.4)}
   .command.armed b{color:var(--ember)}
 
-  .dossier{min-height:calc(100vh - 36px);padding:16px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+  .dossier{min-height:calc(100vh - 36px);padding:14px;display:flex;flex-direction:column;gap:12px;overflow:hidden;min-width:0;max-width:100%;word-break:break-word;overflow-wrap:break-word}
+  .dossier *{min-width:0;max-width:100%}
+  .dossier .feed{word-break:break-all;overflow-wrap:break-word}
+  .dossier .verdict h2{word-break:break-word;font-size:22px}
+  .dossier .metric b{word-break:break-word;font-size:12px;line-height:1.3}
   .verdict{padding:16px;border:1px solid rgba(255,179,77,.35);background:radial-gradient(circle at 20% 0,rgba(255,179,77,.2),transparent 11rem),rgba(5,18,31,.76);clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%);transition:border-color .3s}
   .verdict.v-build{border-color:rgba(77,255,194,.45);background:radial-gradient(circle at 20% 0,rgba(77,255,194,.2),transparent 11rem),rgba(5,18,31,.76)}
   .verdict.v-watch{border-color:rgba(28,232,255,.45);background:radial-gradient(circle at 20% 0,rgba(28,232,255,.2),transparent 11rem),rgba(5,18,31,.76)}
@@ -587,8 +591,8 @@
   @media(prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}
   }
-  @media(max-width:1180px){
-    .app{grid-template-columns:72px 1fr}
+  @media(max-width:1320px){
+    .app{grid-template-columns:200px 1fr}
     .dossier{grid-column:2}
     .nexus{grid-template-columns:1fr}
     .agents{grid-template-columns:repeat(2,1fr)}
@@ -813,17 +817,8 @@
         <h1>Design & UX</h1>
         <p>F.O.R.M. structures UX flows. L.E.N.S. owns visual direction and prevents generic AI app look. V.I.E.W. defines the component system. Design always reads from Product Management's PRD first, never guesses.</p>
       </div>
-      <div class="export-row">
-        <button class="export-btn">Export UI/UX Plan .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Screen Flow .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Component System .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Visual Direction .txt <span class="arrow">▸</span></button>
-      </div>
-      <div class="module-placeholder">
-        <div class="icon">F ▸ L ▸ V</div>
-        <h3>F.O.R.M. · L.E.N.S. · V.I.E.W.</h3>
-        <p>User flow map, screen inventory, navigation model, onboarding flow, visual direction (colors / type / spacing), component library, UI critique, app store screenshot direction. Quality scored on clarity, premium feel, differentiation, ease of use, mobile readiness, consistency.</p>
-        <div class="phase-note">Phase 6 · Design & UX workflow</div>
+      <div id="designHost" style="display:flex;flex-direction:column;gap:14px">
+        <div class="module-placeholder"><div class="icon">↻</div><h3>Loading projects…</h3></div>
       </div>
     </section>
 
@@ -834,18 +829,8 @@
         <h1>Marketing & Growth</h1>
         <p>H.A.L.O. positions. A.U.R.A. acquires and retains. E.C.H.O. owns community engagement. D.A.S.H. measures conversion. Runs AFTER Product Management and Design so messaging stays anchored to actual scope. No public posts, ads, or DMs without your approval.</p>
       </div>
-      <div class="export-row">
-        <button class="export-btn">Export Marketing Plan .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export UGC Scripts .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Community Posts .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export App Store Listing .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export 30-Day Launch Calendar .txt <span class="arrow">▸</span></button>
-      </div>
-      <div class="module-placeholder">
-        <div class="icon">H ▸ A ▸ E ▸ D</div>
-        <h3>H.A.L.O. · A.U.R.A. · E.C.H.O. · D.A.S.H.</h3>
-        <p>Positioning, customer avatar, one-liner, launch offer, landing page copy, UGC script library, community plan with approval gates, 30-day launch calendar, analytics plan with KPIs and kill criteria.</p>
-        <div class="phase-note">Phase 7 · Marketing & Growth workflow</div>
+      <div id="marketingHost" style="display:flex;flex-direction:column;gap:14px">
+        <div class="module-placeholder"><div class="icon">↻</div><h3>Loading projects…</h3></div>
       </div>
     </section>
 
@@ -3204,6 +3189,32 @@ async function routeIntent(text){
     return;
   }
 
+  // Design generation
+  if(/\b(generate|build|write|create|produce)\b.*\b(user flow|ux flow|visual direction|visual style|component system|components|app store screenshot|screenshots|design)\b/.test(text)){
+    const docType = /\bvisual\b/.test(text) ? "visual"
+                  : /\b(component|widget)\b/.test(text) ? "components"
+                  : /\bscreenshot\b/.test(text) ? "screenshots"
+                  : /\b(flow|ux|onboarding)\b/.test(text) ? "flow"
+                  : "flow";
+    if(!state.activeProjectId){ await say("Approve a project first, King Meka."); switchModule("design"); return; }
+    await say(`Generating the ${docType} now.`);
+    await generateDeptDoc("design", docType);
+    return;
+  }
+
+  // Marketing generation
+  if(/\b(generate|build|write|create|produce)\b.*\b(positioning|tagline|one[- ]liner|acquisition|growth plan|community plan|reddit posts|ugc|launch calendar|30[- ]day|marketing plan)\b/.test(text)){
+    const docType = /\bpositioning|tagline|one[- ]liner\b/.test(text) ? "positioning"
+                  : /\b(acquisition|growth|retention)\b/.test(text) ? "acquisition"
+                  : /\b(community|reddit|ugc|posts)\b/.test(text) ? "community"
+                  : /\b(calendar|30[- ]day|marketing plan|launch plan)\b/.test(text) ? "calendar"
+                  : "positioning";
+    if(!state.activeProjectId){ await say("Approve a project first, King Meka."); switchModule("marketing"); return; }
+    await say(`Generating ${docType} now.`);
+    await generateDeptDoc("marketing", docType);
+    return;
+  }
+
   // "What is X working on" — specific agent
   const code=detectAgent(text);
   if(code && /\b(working|doing|up to|status|on right now|on now|right now)\b/.test(text)){
@@ -3546,10 +3557,12 @@ function switchModule(id){
     s.classList.toggle("active", s.dataset.module === id);
   });
   // Per-module data loaders
-  if(id === "command")  { renderDeptGrid(); }
-  if(id === "pipeline") { refreshPipeline(); }
-  if(id === "product")  { refreshProductWorkspace(); }
-  if(id === "reports")  { refreshReports(); }
+  if(id === "command")   { renderDeptGrid(); }
+  if(id === "pipeline")  { refreshPipeline(); }
+  if(id === "product")   { refreshProductWorkspace(); }
+  if(id === "design")    { refreshDesignWorkspace(); }
+  if(id === "marketing") { refreshMarketingWorkspace(); }
+  if(id === "reports")   { refreshReports(); }
   const stage = $("stage");
   if(stage) stage.dataset.activeModule = id;
   log("SYS",`▶ Module: ${id.toUpperCase()}.`,"sys");
@@ -3794,6 +3807,166 @@ async function generateProductDoc(docType, btn){
 function downloadFile(fileId){
   if(!fileId) return;
   window.open(`/api/files/download?id=${encodeURIComponent(fileId)}`, "_blank");
+}
+
+/* ---------- DESIGN & UX WORKSPACE ---------- */
+async function refreshDesignWorkspace(){
+  const host = $("designHost");
+  if(!host) return;
+  host.innerHTML = `<div class="module-placeholder"><div class="icon">↻</div><h3>Loading projects…</h3></div>`;
+  try{
+    if(!state.projects){
+      const r = await fetch("/api/projects/list");
+      const j = await r.json();
+      state.projects = j.projects || [];
+    }
+    if(!state.projects.length){
+      host.innerHTML = `<div class="module-placeholder"><div class="icon">∅</div><h3>No projects yet</h3><p>Approve a briefing from the App Pipeline first. Design reads Product Management's PRD before generating UX.</p></div>`;
+      return;
+    }
+    if(!state.activeProjectId || !state.projects.find(p=>p.id===state.activeProjectId)){
+      state.activeProjectId = state.projects[0].id;
+    }
+    renderDesignForActive();
+  }catch(e){
+    host.innerHTML = `<div class="module-placeholder"><div class="icon">!</div><h3>Couldn't load</h3><p>${escapeHtml(e.message)}</p></div>`;
+  }
+}
+
+function renderDesignForActive(){
+  const host = $("designHost");
+  const projects = state.projects || [];
+  const active = projects.find(p => p.id === state.activeProjectId) || projects[0];
+  if(!active){ refreshDesignWorkspace(); return; }
+  state.activeProjectId = active.id;
+
+  const files = (active.generated_files || []).filter(f => f.dept_id === "ux" || ["flow","visual","components","screenshots"].includes(f.file_type));
+  const fileOf = type => files.find(f => f.file_type === type);
+  const has = type => !!fileOf(type);
+
+  host.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid rgba(28,232,255,.2);background:rgba(2,12,23,.5);clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)">
+      <span style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase">Active Project:</span>
+      <select id="designProjSel" onchange="state.activeProjectId=this.value;renderDesignForActive()" style="background:rgba(3,14,25,.8);border:1px solid var(--line-soft);color:#fff;padding:8px 12px;font-family:ui-monospace,monospace;font-size:12px;outline:none">
+        ${projects.map(p => `<option value="${p.id}" ${p.id===active.id?"selected":""}>${escapeHtml(p.name)} · ${p.status}</option>`).join("")}
+      </select>
+      <span style="margin-left:auto;font-family:ui-monospace,monospace;color:var(--line);font-size:11px;letter-spacing:.15em">${active.verdict||""}</span>
+    </div>
+
+    <div class="dept-card" style="cursor:default">
+      <div class="dept-num">${active.vertical||""}</div>
+      <div class="dept-name" style="font-size:16px">${escapeHtml(active.name)}</div>
+      <div class="dept-mission">${escapeHtml(active.one_line||"")}</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">
+      ${renderDeptGenCard("design","flow",       "F.O.R.M. · User Flow",          has("flow"),       fileOf("flow"))}
+      ${renderDeptGenCard("design","visual",     "L.E.N.S. · Visual Direction",   has("visual"),     fileOf("visual"))}
+      ${renderDeptGenCard("design","components", "V.I.E.W. · Component System",   has("components"), fileOf("components"))}
+      ${renderDeptGenCard("design","screenshots","L.E.N.S. · App Store Shots",    has("screenshots"),fileOf("screenshots"))}
+    </div>
+  `;
+}
+
+/* ---------- MARKETING & GROWTH WORKSPACE ---------- */
+async function refreshMarketingWorkspace(){
+  const host = $("marketingHost");
+  if(!host) return;
+  host.innerHTML = `<div class="module-placeholder"><div class="icon">↻</div><h3>Loading projects…</h3></div>`;
+  try{
+    if(!state.projects){
+      const r = await fetch("/api/projects/list");
+      const j = await r.json();
+      state.projects = j.projects || [];
+    }
+    if(!state.projects.length){
+      host.innerHTML = `<div class="module-placeholder"><div class="icon">∅</div><h3>No projects yet</h3><p>Marketing runs AFTER Product Management AND Design so messaging stays anchored to actual scope. Approve a project first.</p></div>`;
+      return;
+    }
+    if(!state.activeProjectId || !state.projects.find(p=>p.id===state.activeProjectId)){
+      state.activeProjectId = state.projects[0].id;
+    }
+    renderMarketingForActive();
+  }catch(e){
+    host.innerHTML = `<div class="module-placeholder"><div class="icon">!</div><h3>Couldn't load</h3><p>${escapeHtml(e.message)}</p></div>`;
+  }
+}
+
+function renderMarketingForActive(){
+  const host = $("marketingHost");
+  const projects = state.projects || [];
+  const active = projects.find(p => p.id === state.activeProjectId) || projects[0];
+  if(!active){ refreshMarketingWorkspace(); return; }
+  state.activeProjectId = active.id;
+
+  const files = (active.generated_files || []).filter(f => f.dept_id === "mkt" || ["positioning","acquisition","community","calendar"].includes(f.file_type));
+  const fileOf = type => files.find(f => f.file_type === type);
+  const has = type => !!fileOf(type);
+
+  host.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid rgba(28,232,255,.2);background:rgba(2,12,23,.5);clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)">
+      <span style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase">Active Project:</span>
+      <select id="marketingProjSel" onchange="state.activeProjectId=this.value;renderMarketingForActive()" style="background:rgba(3,14,25,.8);border:1px solid var(--line-soft);color:#fff;padding:8px 12px;font-family:ui-monospace,monospace;font-size:12px;outline:none">
+        ${projects.map(p => `<option value="${p.id}" ${p.id===active.id?"selected":""}>${escapeHtml(p.name)} · ${p.status}</option>`).join("")}
+      </select>
+      <span style="margin-left:auto;font-family:ui-monospace,monospace;color:var(--line);font-size:11px;letter-spacing:.15em">${active.verdict||""}</span>
+    </div>
+
+    <div class="dept-card" style="cursor:default">
+      <div class="dept-num">${active.vertical||""}</div>
+      <div class="dept-name" style="font-size:16px">${escapeHtml(active.name)}</div>
+      <div class="dept-mission">${escapeHtml(active.one_line||"")}</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">
+      ${renderDeptGenCard("marketing","positioning", "H.A.L.O. · Positioning",          has("positioning"), fileOf("positioning"))}
+      ${renderDeptGenCard("marketing","acquisition", "A.U.R.A. · Acquisition Plan",     has("acquisition"), fileOf("acquisition"))}
+      ${renderDeptGenCard("marketing","community",   "E.C.H.O. · Community + UGC",      has("community"),   fileOf("community"))}
+      ${renderDeptGenCard("marketing","calendar",    "D.A.S.H. · 30-Day Calendar",      has("calendar"),    fileOf("calendar"))}
+    </div>
+  `;
+}
+
+/* Generic generator card used by Design + Marketing (mirrors renderGenCard for Product) */
+function renderDeptGenCard(dept, type, title, has, file){
+  const colors = {
+    flow:"var(--line)", visual:"var(--ember)", components:"var(--ok)", screenshots:"var(--ember)",
+    positioning:"var(--ember)", acquisition:"var(--ok)", community:"var(--line)", calendar:"var(--ember)"
+  };
+  return `<div class="dept-card" style="cursor:default">
+    <div class="dept-name" style="font-size:12px;color:${colors[type]||"var(--line)"}">${title}</div>
+    <div class="dept-mission" style="min-height:auto;font-size:11px;margin-bottom:12px">
+      ${has ? `<span style="color:var(--ok)">✓ Generated</span>` : `<span style="color:var(--muted)">Not generated yet</span>`}
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="export-btn" onclick="generateDeptDoc('${dept}','${type}',this)" style="padding:8px 12px;font-size:10px;flex:1">${has?"↻ Regenerate":"▶ Generate"}</button>
+      ${file ? `<button class="export-btn" onclick="downloadFile('${file.id}')" style="padding:8px 12px;font-size:10px;flex:1">⬇ .txt</button>` : ""}
+    </div>
+  </div>`;
+}
+
+async function generateDeptDoc(dept, docType, btn){
+  const pid = state.activeProjectId;
+  if(!pid){ toast("No active project"); return; }
+  if(btn){ btn.disabled = true; btn.textContent = "Generating…"; }
+  log("SYS",`▶ Generating ${dept.toUpperCase()}/${docType.toUpperCase()}…`,"sys");
+  try{
+    const r = await fetch(`/api/${dept}/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: pid, doc_type: docType })
+    });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || "generate failed");
+    toast(`${docType.toUpperCase()} generated · ${j.tokens||0} tokens · ${(j.elapsed_ms/1000).toFixed(1)}s`);
+    log("BOSS",`Generated ${j.file_name}`,"ok");
+    state.projects = null;
+    if(dept === "design") await refreshDesignWorkspace();
+    else if(dept === "marketing") await refreshMarketingWorkspace();
+  }catch(e){
+    toast(`${dept} ${docType} generation failed: ` + e.message);
+    if(btn){ btn.disabled = false; btn.textContent = "▶ Generate"; }
+  }
 }
 
 /* ---------- REPORTS LIBRARY ---------- */
