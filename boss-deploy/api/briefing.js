@@ -144,21 +144,51 @@ async function callOpenAI(systemPrompt, userPayload, modelOverride) {
   };
 }
 
-/* ---- BOSS · Filter (17 → 5) ---- */
-async function agentBossFilter(vertical, scoutPacket) {
+/* ---- BOSS · Filter (17 → 5) ----
+   Critical fix: existing apps in Friday's evidence are COMPETITORS, not
+   opportunities. Never echo "Home Keeper" or "Homyest" as a proposed app.
+   Identify the wedge they leave open and propose NEW concepts. */
+async function agentBossFilter(vertical, scoutPacket, shelf) {
   const sys = `You are B.O.S.S., Meka Anyanwu's chief venture decision agent.
 Friday scouted live web evidence in the ${vertical.name} vertical today.
-Your job: filter aggressively to the TOP 5 candidate ideas that are
-mobile-app shaped, solo-founder buildable, and show clear pain in the evidence.
-Most signals should NOT make the cut. Kill content ideas, enterprise tools,
-SaaS dashboards, and anything overlapping Meka's existing portfolio.
+
+YOUR JOB: produce 5 NEW app concepts Meka could solo-build that exploit pain
+visible in the evidence. Most signals should be discarded.
+
+CRITICAL RULES — read carefully:
+
+1. Apps that ALREADY EXIST in Friday's evidence (App Store listings, Product Hunt
+   pages, named competitors) are COMPETITORS. They are NOT proposals. NEVER echo
+   their name as your candidate. Use them as evidence of demand and pain, then
+   invent a NEW app name with a fresh angle.
+   Wrong: "Homyest - home maintenance app" (Homyest already exists)
+   Right: "Punchlist - skip-the-overwhelm checklist for first-time homeowners,
+   wedge against Homyest and Home Keeper which users say are bloated"
+
+2. Reject ideas that overlap Meka's existing portfolio: ${MEKA_PORTFOLIO}.
+
+3. Reject ideas already on the shelf below. Do NOT re-pitch them. Discard with
+   reason "already on shelf".
+
+4. Each candidate needs a clear pain quote or pattern from the evidence, plus
+   the source URL(s). If you can't cite evidence, don't propose it.
+
+5. Mobile-app shaped only. Solo-founder buildable in 30 days. No enterprise tools,
+   no SaaS dashboards, no content businesses.
+
 ${HOUSE_RULES}
 
 Output schema:
-{"top5":[{"name":"","one_line":"","target_user":"","pain":"","sources":["url"],"signal_score":1-10}],"discarded":[{"name":"","reason":""}]}`;
+{"top5":[{"name":"NEW name not an existing app","one_line":"","target_user":"","pain":"","sources":["url from evidence"],"signal_score":1-10}],"discarded":[{"name":"","reason":""}]}`;
+
+  const shelfList = (shelf||[]).slice(0,30).map(s =>
+    `- ${s.name} (${s.verdict}, ${s.date}): ${s.one_line||""}`
+  ).join("\n") || "(none yet)";
+
   const userMsg = {
     vertical: vertical.name,
     portfolio_to_avoid: MEKA_PORTFOLIO,
+    shelf_already_pitched: shelfList,
     evidence: scoutPacket.evidence.slice(0,18).map(e => ({ title:e.title, url:e.url, snippet:e.snippet }))
   };
   return await callOpenAI(sys, userMsg);
@@ -190,15 +220,22 @@ Output schema:
   return await callOpenAI(sys, { vertical: vertical.name, candidate });
 }
 
-/* ---- BOSS · Narrow (5 → 3) ---- */
+/* ---- BOSS · Narrow (5 → 3) ----
+   Critical fix: ALWAYS populate kills array with the 2 you dropped. The final
+   synthesis depends on this list and won't re-derive it. */
 async function agentBossNarrow(top5, voidOutputs, sniperOutputs) {
   const sys = `You are B.O.S.S. Narrow the 5 candidates to the top 3 based on
-Void's demand scores and Sniper's competition weakness scores. Kill the 2 weakest
-with one-sentence reasons. Bias toward strong pain plus weak incumbents.
+Void's demand scores and Sniper's competition weakness scores. Bias toward
+strong pain plus weak incumbents. Use the EXACT names provided in candidates.
+
+REQUIRED: The kills array MUST contain the 2 candidates you dropped, each with a
+one-sentence reason. Never return an empty kills array. If you only see 5 inputs,
+you must output exactly 3 in top3 and exactly 2 in kills.
+
 ${HOUSE_RULES}
 
 Output schema:
-{"top3":[{"name":"","one_line":"","target_user":"","pain":"","sources":["url"]}],"kills":[{"name":"","why":""},{"name":"","why":""}]}`;
+{"top3":[{"name":"exact name from input","one_line":"","target_user":"","pain":"","sources":["url"]}],"kills":[{"name":"exact name from input","why":"one sentence"},{"name":"","why":""}]}`;
   return await callOpenAI(sys, {
     candidates: top5,
     void_scores: voidOutputs,
@@ -245,26 +282,50 @@ Output schema:
   return await callOpenAI(sys, candidate);
 }
 
-/* ---- BOSS · Final synthesis ---- */
+/* ---- BOSS · Final synthesis ----
+   Critical fixes: name stability (use exact names from boss_narrow), preserve
+   ALL kills (from filter + narrow stages), compute weighted_score honestly. */
 async function agentBossFinal(vertical, top3, voidOut, sniperOut, blueOut, cashOut, vibeOut, kills, evidenceTitles) {
   const today = new Date().toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" });
   const sys = `You are B.O.S.S. Synthesize the agent outputs into Meka's morning briefing.
-For each of the top 3, compute the weighted score using:
-pain 20%, willingness 15%, reachability 15%, mvp_simplicity 15%,
-weak_competition 10%, marketing_hook 10%, subscription 10%, founder_fit 5%.
 
-Verdict bands: 8.5+ BUILD, 7.0-8.4 VALIDATE, 5.5-6.9 WATCH, below 5.5 KILL.
-You are direct, skeptical, founder-focused. Address Meka as "King Meka" or "Meka".
-Most ideas should be killed. That is a feature.
+CRITICAL RULES:
 
-Compute pain_intensity from Void's evidence (if pain was obvious, score high).
-founder_fit reflects Meka's strengths: native iOS, solo-builder, AI-first,
-project management background, options trader, creator. Score 1-10.
+1. NAME STABILITY. Use the EXACT names that appear in the top3 input below.
+   Do NOT invent new names. If top3[0] is "Punchlist", call it Punchlist
+   everywhere - in top, in ranking[0], everywhere. Same for ranking[1] and
+   ranking[2]. If Blue, Cash, or Vibe used a different name for the same
+   candidate, treat the top3 name as authoritative.
+
+2. WEIGHTED SCORE MATH. Compute it mechanically:
+   weighted_score =
+       pain_intensity * 0.20
+     + willingness    * 0.15
+     + reachability   * 0.15
+     + mvp_simplicity * 0.15
+     + weak_competition * 0.10
+     + marketing_hook * 0.10
+     + subscription   * 0.10
+     + founder_fit    * 0.05
+   Apply verdict band STRICTLY: 8.5+ BUILD, 7.0-8.4 VALIDATE,
+   5.5-6.9 WATCH, below 5.5 KILL. Do not round up.
+
+3. KILLS ARRAY MUST BE NON-EMPTY. Include every kill from kills_so_far
+   plus any new ideas you reject during synthesis. If you have 0 kills,
+   you did the job wrong - re-examine the candidates.
+
+4. Persona: direct, skeptical, founder-focused. Address Meka as "King Meka"
+   or "Meka". Most ideas should die. That is a feature.
+
+5. Score pain_intensity from Void's evidence (if pain was obvious in Reddit
+   threads / App Store reviews, score 8-10).
+   Score founder_fit using Meka's strengths: native iOS, solo-builder, AI-first,
+   PM background, options trader, creator. Score 1-10.
 
 ${HOUSE_RULES}
 
 Output schema:
-{"date":"${today}","vertical":"${vertical.name}","executive_summary":"under 60 words","top":{"name":"","one_line":"","target_user":"","pain":"","evidence":"","sources":["url","url"],"monetization":"","mvp":"","verdict":"BUILD|VALIDATE|WATCH|KILL","weighted_score":1-10,"scores":{"pain_intensity":1-10,"willingness":1-10,"reachability":1-10,"mvp_simplicity":1-10,"weak_competition":1-10,"marketing_hook":1-10,"subscription":1-10,"founder_fit":1-10}},"ranking":[{"rank":1,"name":"","line":"","score":1-10,"verdict":"","sources":["url"]},{"rank":2,"name":"","line":"","score":1-10,"verdict":"","sources":["url"]},{"rank":3,"name":"","line":"","score":1-10,"verdict":"","sources":["url"]}],"kills":[{"name":"","why":""}],"action_items":["validate this today","post this","do NOT build this yet"]}`;
+{"date":"${today}","vertical":"${vertical.name}","executive_summary":"under 60 words","top":{"name":"EXACT name from top3[0]","one_line":"","target_user":"","pain":"","evidence":"","sources":["url","url"],"monetization":"","mvp":"","verdict":"BUILD|VALIDATE|WATCH|KILL","weighted_score":1-10,"scores":{"pain_intensity":1-10,"willingness":1-10,"reachability":1-10,"mvp_simplicity":1-10,"weak_competition":1-10,"marketing_hook":1-10,"subscription":1-10,"founder_fit":1-10}},"ranking":[{"rank":1,"name":"EXACT name from top3[0]","line":"","score":1-10,"verdict":"","sources":["url"]},{"rank":2,"name":"EXACT name from top3[1]","line":"","score":1-10,"verdict":"","sources":["url"]},{"rank":3,"name":"EXACT name from top3[2]","line":"","score":1-10,"verdict":"","sources":["url"]}],"kills":[{"name":"","why":""}],"action_items":["validate this today","post this","do NOT build this yet"]}`;
   const userPayload = {
     vertical: vertical.name,
     top3, void: voidOut, sniper: sniperOut,
@@ -273,6 +334,41 @@ Output schema:
     evidence_titles: evidenceTitles
   };
   return await callOpenAI(sys, userPayload, "gpt-4o-mini");
+}
+
+/* ---- SHELF LOOKUP (so BOSS doesn't re-pitch old ideas) ---- */
+async function fetchShelf() {
+  const url = sbUrl();
+  const key = sbServiceKey() || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return [];
+  try {
+    const r = await fetch(`${url}/rest/v1/briefings?order=date.desc&limit=30`, {
+      headers: { "apikey":key, "Authorization":`Bearer ${key}` }
+    });
+    if (!r.ok) return [];
+    const rows = await r.json();
+    const shelf = [];
+    const seen = new Set();
+    for (const row of rows) {
+      const payload = row.payload || {};
+      const items = [];
+      if (row.top_verdict && row.top_verdict !== "KILL") {
+        items.push({ name: row.top_name, verdict: row.top_verdict, date: row.date, one_line: payload.top?.one_line||"" });
+      }
+      for (const r2 of (payload.ranking || []).slice(1)) {
+        if (r2.verdict && r2.verdict !== "KILL") {
+          items.push({ name: r2.name, verdict: r2.verdict, date: row.date, one_line: r2.line||"" });
+        }
+      }
+      for (const it of items) {
+        const k = (it.name||"").toLowerCase().trim();
+        if (!k || seen.has(k)) continue;
+        seen.add(k);
+        shelf.push(it);
+      }
+    }
+    return shelf;
+  } catch(e) { return []; }
 }
 
 /* ---- ORCHESTRATOR ---- */
@@ -285,9 +381,13 @@ async function generateBriefing(vertical, scoutPacket) {
   const log = [];
   const evidenceTitles = scoutPacket.evidence.map(e => `${e.title} (${e.url})`);
 
+  // Pull the shelf so BOSS knows what's already been pitched
+  const shelf = await fetchShelf();
+  log.push(`SHELF → loaded ${shelf.length} previously pitched ideas`);
+
   // 1. BOSS filters 17 → 5
   log.push("BOSS_FILTER → cutting 17 signals to top 5");
-  const filterResp = await agentBossFilter(vertical, scoutPacket);
+  const filterResp = await agentBossFilter(vertical, scoutPacket, shelf);
   usage.boss_filter = filterResp.usage;
   const top5 = filterResp.data.top5 || [];
   if (top5.length === 0) throw new Error("Boss filter returned zero candidates.");
@@ -333,6 +433,41 @@ async function generateBriefing(vertical, scoutPacket) {
   usage.boss_final = finalResp.usage;
   const briefing = finalResp.data;
 
+  // ---- DEFENSIVE POST-PROCESSING ----
+  // Even with tightened prompts, models drift. Enforce invariants in code:
+  //   (a) recompute weighted_score from the scores object
+  //   (b) snap verdict to the score band
+  //   (c) ensure kills array is populated from boss_narrow if synthesis dropped them
+  //   (d) clamp top.name + ranking names to boss_narrow.top3 names
+  try {
+    const WEIGHTS = { pain_intensity:.20, willingness:.15, reachability:.15, mvp_simplicity:.15, weak_competition:.10, marketing_hook:.10, subscription:.10, founder_fit:.05 };
+    const verdictFor = n => n>=8.5?"BUILD":n>=7.0?"VALIDATE":n>=5.5?"WATCH":"KILL";
+
+    // (a)+(b) honest weighted score on the top idea
+    if (briefing.top?.scores) {
+      let ws = 0;
+      for (const k in WEIGHTS) ws += (briefing.top.scores[k]||0) * WEIGHTS[k];
+      briefing.top.weighted_score = Number(ws.toFixed(2));
+      briefing.top.verdict = verdictFor(ws);
+    }
+
+    // (c) restore kills from boss_narrow if final synthesis dropped them
+    if (!Array.isArray(briefing.kills) || briefing.kills.length === 0) {
+      briefing.kills = narrowResp.data.kills || [];
+    }
+
+    // (d) name stability — force ranking + top to use boss_narrow names
+    if (Array.isArray(briefing.ranking) && top3.length) {
+      briefing.ranking = briefing.ranking.map((r, i) => ({
+        ...r,
+        name: top3[i]?.name || r.name
+      }));
+      if (briefing.top && top3[0]?.name) briefing.top.name = top3[0].name;
+    }
+  } catch(e) {
+    log.push("POST_PROCESS_WARN → " + e.message);
+  }
+
   // Attach the per-agent reports so the cockpit dossiers / Supabase get the full chain
   briefing.agent_reports = {
     friday: { sources_scouted: scoutPacket.evidence.length, queries_run: scoutPacket.queries.length },
@@ -344,6 +479,7 @@ async function generateBriefing(vertical, scoutPacket) {
     cash: cashData,
     vibe: vibeData
   };
+  briefing.shelf_size = shelf.length;
   briefing.run_log = log;
   briefing.usage = usage;
   briefing.usage_total_tokens = Object.values(usage).reduce((s,v) => s + (typeof v === "number" ? v : (v?.total_tokens||0)), 0);
