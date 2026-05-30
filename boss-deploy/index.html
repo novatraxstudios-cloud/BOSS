@@ -884,6 +884,8 @@ function boot(){
   }else{
     toast(`Ready. Press Arm listener and say "${state.cfg.wake}".`);
   }
+  // Pull today's autonomous briefing from the backend, if it's been generated.
+  loadLiveBriefing();
   // Preload synth voices on first gesture
   document.addEventListener("click",()=>{try{window.speechSynthesis&&speechSynthesis.getVoices();}catch(e){}},{once:true});
 }
@@ -1192,6 +1194,56 @@ function doneCard(name){
   if(el){el.classList.remove("lit");el.classList.add("done")}
 }
 
+/* ---------- LIVE BACKEND FETCH ---------- */
+// Pulls the cron-generated briefing from /api/latest and hydrates DATA so
+// the animated pipeline + voice briefing speak the same opportunity that
+// got emailed this morning. Falls back to canned DATA on any failure.
+async function loadLiveBriefing(){
+  try{
+    const res = await fetch("/api/latest", { cache:"no-store" });
+    if(!res.ok) throw new Error("latest "+res.status);
+    const payload = await res.json();
+    if(!payload.hasLive || !payload.briefing){
+      log("TRON","No live briefing in store yet. Using local demo data.","");
+      state.lastSources = [];
+      return;
+    }
+    const b = payload.briefing;
+    if(!b.top || !b.ranking || !b.kills) throw new Error("malformed briefing");
+
+    // Hydrate DATA
+    DATA.top = {
+      name: b.top.name,
+      line: b.top.one_line || b.top.line || "",
+      pain: b.top.pain || "",
+      evidence: b.top.evidence || "",
+      target: b.top.target_user || "—",
+      model: b.top.monetization || "—",
+      mvp: b.top.mvp || "—",
+      verdict: b.top.verdict,
+      scores: b.top.scores || DATA.top.scores
+    };
+    DATA.ranking = (b.ranking||[]).map(r=>({
+      rank:r.rank, name:r.name, line:r.line, score:r.score, verdict:r.verdict
+    }));
+    DATA.kills = (b.kills||[]).map(k=>[k.name,k.why]);
+    state.lastSources = (payload.sources||[]).map(s=>s.url);
+    state.liveBriefingDate = b.date;
+    state.liveVertical = b.vertical;
+
+    // Repaint the right-side dossier panels with fresh data
+    renderTop();
+    renderScores();
+    renderKills();
+    applyVerdict(DATA.top.verdict);
+
+    log("TRON",`Live briefing loaded · ${payload.sources_scouted||0} sources · vertical: ${b.vertical||"n/a"}.`,"ok");
+  }catch(e){
+    log("TRON","Live fetch failed: "+e.message+". Using local demo data.","kill");
+    state.lastSources = [];
+  }
+}
+
 /* ---------- BRIEFING PIPELINE ---------- */
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -1238,6 +1290,9 @@ async function runBriefing(){
   state.runs++; state.ideas+=17;
   state.brainBoost=1.7;
   log("SYS","▶ Autonomous briefing run initiated.","sys");
+
+  // ---- Pull live backend briefing if available ----
+  await loadLiveBriefing();
   const steps=[
     ["TRON","Telemetry envelope opened.",380,null,null,"opening the telemetry envelope"],
     ["BOSS","Mission: find pain, reject fluff, protect Meka's time.",520,null,null,"setting the daily mission and research packet"],
