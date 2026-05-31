@@ -873,19 +873,15 @@
       <div class="module-hero">
         <div class="kicker">Module 08 · Ops Commander</div>
         <h1>T.R.O.N. Operations</h1>
-        <p>System-wide ops backbone. Tracks every agent run, every department's completion status, every failed job, API spend, cron health, .txt export status, security escalations, trading report delivery. Compiles the 7:00 AM Security Report from V.A.U.L.T. / H.A.W.K. / M.A.C.E. and feeds B.O.S.S.</p>
+        <p>System-wide ops backbone. Live agent run matrix, cost meter, cron health, failure feed. Reads from ops_logs — every endpoint logs here when it runs.</p>
       </div>
       <div class="export-row">
-        <button class="export-btn">Export Ops Summary .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Agent Run Log .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Failed Jobs Report .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export API Cost Report .txt <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshTronOps()">Refresh <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshTronOps('24h')">Last 24h <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshTronOps('7d')">Last 7d <span class="arrow">▸</span></button>
       </div>
-      <div class="module-placeholder">
-        <div class="icon">▰ ▰ ▰</div>
-        <h3>Agent Run Matrix</h3>
-        <p>Live matrix of all 26 agents × scheduled runs × manual runs × failures × outputs generated. Cost meter, latency meter, retry queue, escalation log.</p>
-        <div class="phase-note">Phase 10 · Scheduling + ops monitoring</div>
+      <div id="tronHost" style="display:flex;flex-direction:column;gap:14px">
+        <div class="module-placeholder"><div class="icon">↻</div><h3>Loading operations data…</h3></div>
       </div>
     </section>
 
@@ -3260,6 +3256,27 @@ async function routeIntent(text){
 
   // (ideas board intent moved to fast path above)
 
+  // T.R.O.N. operations status
+  if(/\b(tron|operations|ops status|agent runs|run matrix|cost meter|cron health|how is the system|system status|how are we doing|ops monitor)\b/.test(text) && /\b(status|check|how|what|show|tell|right now|today|tron|operations|ops)\b/.test(text)){
+    switchModule("tron");
+    try{
+      const r = await fetch("/api/tron/summary", { cache:"no-store" });
+      const j = await r.json();
+      if(!r.ok) throw new Error(j.error || "tron failed");
+      const w = j.last_24h;
+      const stale = (j.cron_health||[]).filter(c => !c.on_schedule);
+      let line = `Operations health ${j.health_score} out of one hundred, King Meka. `;
+      line += `${w.runs} agent runs in the last twenty four hours, ${w.successes} successful, ${w.failures} failed. `;
+      if(w.tokens) line += `Burned about ${(w.tokens/1000).toFixed(1)} thousand tokens, ${w.cost ? "spend roughly $"+w.cost.toFixed(2)+". " : ""}`;
+      if(stale.length) line += `${stale.length} cron${stale.length===1?"":"s"} behind schedule: ${stale.map(c=>c.label.split(" ")[0]).join(", ")}. `;
+      else line += `All crons on schedule. `;
+      if(j.recent_failures?.length) line += `${j.recent_failures.length} failure${j.recent_failures.length===1?"":"s"} on record this week.`;
+      else line += `Clean run this week, no failures logged.`;
+      await say(line);
+    }catch(e){ await say("Tron status error: " + e.message); }
+    return;
+  }
+
   // Security report
   if(/\b(security|reliability|vault|hawk|mace|health check|system health|ops check|cron health)\b/.test(text) && /\b(run|generate|brief|status|report|check|now|today)\b/.test(text)){
     switchModule("security");
@@ -3598,6 +3615,7 @@ function switchModule(id){
   if(id === "marketing") { refreshMarketingWorkspace(); }
   if(id === "security")  { refreshSecurityCenter(); }
   if(id === "trading")   { refreshTradingWatchlist(); }
+  if(id === "tron")      { refreshTronOps(); }
   if(id === "reports")   { refreshReports(); }
   const stage = $("stage");
   if(stage) stage.dataset.activeModule = id;
@@ -4334,6 +4352,139 @@ async function saveTickerFromModal(id){
     await refreshTradingWatchlist();
   }catch(e){
     toast("Save failed: " + e.message);
+  }
+}
+
+/* ---------- T.R.O.N. OPERATIONS ---------- */
+async function refreshTronOps(window){
+  const host = $("tronHost");
+  if(!host) return;
+  host.innerHTML = `<div class="module-placeholder"><div class="icon">↻</div><h3>Loading operations data…</h3></div>`;
+  try{
+    const r = await fetch("/api/tron/summary", { cache: "no-store" });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || "summary failed");
+
+    const w = window === "7d" ? j.last_7d : j.last_24h;
+    const wlabel = window === "7d" ? "Last 7 days" : "Last 24 hours";
+    const health = j.health_score ?? 0;
+    const healthColor = health >= 80 ? "var(--ok)" : health >= 50 ? "var(--ember)" : "var(--danger)";
+
+    // Cron health rows
+    const cronRows = (j.cron_health||[]).map(c => {
+      const dot = c.on_schedule ? "●" : c.last_run ? "◐" : "○";
+      const color = c.on_schedule ? "var(--ok)" : c.last_run ? "var(--ember)" : "var(--danger)";
+      const last = c.last_run ? new Date(c.last_run).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "never";
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft)">
+        <span style="color:${color};font-size:18px">${dot}</span>
+        <div style="flex:1">
+          <div style="font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.1em;color:#fff">${escapeHtml(c.label)}</div>
+          <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted)">cron <code>${escapeHtml(c.schedule_cron)}</code> · ${c.runs_7d} runs in 7d</div>
+        </div>
+        <div style="text-align:right;font-family:ui-monospace,monospace;font-size:10px;color:var(--muted)">
+          last ${last}<br>
+          <span style="color:${c.on_schedule?"var(--ok)":"var(--danger)"}">${c.hours_since_last_run != null ? c.hours_since_last_run+"h ago" : "—"}</span>
+        </div>
+      </div>`;
+    }).join("");
+
+    // Per-agent run matrix (top 12 by run count)
+    const agents = Object.entries(w.by_agent||{}).sort(([,a],[,b])=>b.runs-a.runs).slice(0,12);
+    const agentRows = agents.map(([aid, a]) => {
+      const rate = a.runs ? (a.successes / a.runs) : 0;
+      const rateColor = rate >= 0.9 ? "var(--ok)" : rate >= 0.6 ? "var(--ember)" : "var(--danger)";
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line-soft)">
+        <div style="font-family:ui-monospace,monospace;font-weight:900;color:var(--line);min-width:70px">${escapeHtml(aid)}</div>
+        <div style="flex:1;font-family:ui-monospace,monospace;font-size:11px;color:var(--muted)">
+          ${a.runs} runs · <span style="color:var(--ok)">${a.successes} ok</span> · <span style="color:${a.failures?"var(--danger)":"var(--muted)"}">${a.failures} fail</span>
+        </div>
+        <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);min-width:90px;text-align:right">${(a.tokens||0).toLocaleString()} tok</div>
+        <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);min-width:70px;text-align:right">$${(a.cost||0).toFixed(4)}</div>
+        <div style="font-family:ui-monospace,monospace;font-size:11px;color:${rateColor};min-width:50px;text-align:right">${Math.round(rate*100)}%</div>
+      </div>`;
+    }).join("") || `<div style="color:var(--muted);font-size:11px;padding:8px 0">No agent runs in this window.</div>`;
+
+    // Per-action breakdown
+    const actions = Object.entries(w.by_action||{}).sort(([,a],[,b])=>b.runs-a.runs).slice(0,10);
+    const actionRows = actions.map(([act, a]) => {
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line-soft)">
+        <div style="flex:1;font-family:ui-monospace,monospace;font-size:11px;color:#fff">${escapeHtml(act)}</div>
+        <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);min-width:60px;text-align:right">${a.runs} runs</div>
+        <div style="font-family:ui-monospace,monospace;font-size:10px;color:${a.failures?"var(--danger)":"var(--muted)"};min-width:60px;text-align:right">${a.failures} fail</div>
+        <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);min-width:70px;text-align:right">$${(a.cost||0).toFixed(4)}</div>
+      </div>`;
+    }).join("") || `<div style="color:var(--muted);font-size:11px;padding:8px 0">No actions logged.</div>`;
+
+    // Recent failures
+    const failureRows = (j.recent_failures||[]).map(f => {
+      const when = new Date(f.run_date).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+      return `<div style="padding:8px 10px;border:1px solid rgba(255,61,103,.3);background:rgba(255,61,103,.05);margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;gap:10px">
+          <div style="font-family:ui-monospace,monospace;font-size:11px;color:var(--danger);font-weight:700">${escapeHtml(f.agent_id||"—")} · ${escapeHtml(f.action||"—")}</div>
+          <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted)">${when}</div>
+        </div>
+        ${f.error_message ? `<div style="font-family:ui-monospace,monospace;font-size:10px;color:#fff;margin-top:4px">${escapeHtml(f.error_message)}</div>` : ""}
+      </div>`;
+    }).join("") || `<div style="color:var(--ok);font-size:11px;padding:8px 0">No failures in the last 7 days. Clean run.</div>`;
+
+    host.innerHTML = `
+      <!-- Summary cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+        <div class="dept-card" style="cursor:default;border-color:${healthColor}">
+          <div class="dept-num">System Health</div>
+          <div class="dept-name" style="font-size:36px;font-weight:900;color:${healthColor};font-family:ui-monospace,monospace">${health}<span style="font-size:14px;color:var(--muted)">/100</span></div>
+          <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted)">${health>=80?"NOMINAL":health>=50?"DEGRADED":"CRITICAL"}</div>
+        </div>
+        <div class="dept-card" style="cursor:default">
+          <div class="dept-num">${wlabel} · Runs</div>
+          <div class="dept-name" style="font-size:30px;color:var(--line);font-family:ui-monospace,monospace">${w.runs}</div>
+          <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted)">${w.successes} ok · ${w.failures} fail · ${Math.round((w.success_rate||0)*100)}%</div>
+        </div>
+        <div class="dept-card" style="cursor:default">
+          <div class="dept-num">${wlabel} · Tokens</div>
+          <div class="dept-name" style="font-size:24px;color:var(--ember);font-family:ui-monospace,monospace">${(w.tokens||0).toLocaleString()}</div>
+          <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted)">openai gpt-4o-mini</div>
+        </div>
+        <div class="dept-card" style="cursor:default">
+          <div class="dept-num">${wlabel} · API Spend</div>
+          <div class="dept-name" style="font-size:24px;color:var(--ok);font-family:ui-monospace,monospace">$${(w.cost||0).toFixed(4)}</div>
+          <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted)">est · token-priced</div>
+        </div>
+      </div>
+
+      <!-- Cron health -->
+      <div class="dept-card" style="cursor:default">
+        <div class="dept-num">Cron Health · Scheduled Runs</div>
+        <div style="margin-top:6px">${cronRows || "(no expected crons configured)"}</div>
+      </div>
+
+      <!-- Agent matrix -->
+      <div class="dept-card" style="cursor:default">
+        <div class="dept-num">Agent Run Matrix · ${wlabel}</div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-family:ui-monospace,monospace;font-size:9px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase">
+          <div style="min-width:70px">Agent</div>
+          <div style="flex:1">Activity</div>
+          <div style="min-width:90px;text-align:right">Tokens</div>
+          <div style="min-width:70px;text-align:right">Cost</div>
+          <div style="min-width:50px;text-align:right">Rate</div>
+        </div>
+        ${agentRows}
+      </div>
+
+      <!-- Action breakdown -->
+      <div class="dept-card" style="cursor:default">
+        <div class="dept-num">Actions Logged · ${wlabel}</div>
+        ${actionRows}
+      </div>
+
+      <!-- Failure feed -->
+      <div class="dept-card" style="cursor:default;border-color:rgba(255,61,103,.25)">
+        <div class="dept-num">Recent Failures · last 7 days · ${(j.recent_failures||[]).length} total</div>
+        <div style="margin-top:8px">${failureRows}</div>
+      </div>
+    `;
+  }catch(e){
+    host.innerHTML = `<div class="module-placeholder"><div class="icon">!</div><h3>Couldn't load ops</h3><p>${escapeHtml(e.message)}</p></div>`;
   }
 }
 
