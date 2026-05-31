@@ -842,16 +842,11 @@
         <p>V.A.U.L.T. monitors auth and access. H.A.W.K. detects anomalies. M.A.C.E. owns incident response. Always-on. Generates a Security & Reliability Report every morning at 7:00 AM CT that lands in your inbox AND inside the 8:00 AM B.O.S.S. briefing.</p>
       </div>
       <div class="export-row">
-        <button class="export-btn">Run Security Report Now <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Security Report .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Incident Log .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Risk Register .txt <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="runSecurityNow(this)">Run Security Report Now <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshSecurityCenter()">Refresh <span class="arrow">▸</span></button>
       </div>
-      <div class="module-placeholder">
-        <div class="icon">V ▸ H ▸ M</div>
-        <h3>7:00 AM Security Report</h3>
-        <p>Auth status, failed login summary, API anomalies, cost spikes, cron health, agent failures, database + email + dashboard health, suspicious activity, open vulnerabilities, urgent fixes, GREEN / YELLOW / RED verdict.</p>
-        <div class="phase-note">Phase 8 · Security workflow + 7am cron</div>
+      <div id="securityHost" style="display:flex;flex-direction:column;gap:14px">
+        <div class="module-placeholder"><div class="icon">↻</div><h3>Loading security reports…</h3></div>
       </div>
     </section>
 
@@ -863,16 +858,13 @@
         <p>P.I.V.O.T. reads premarket. A.T.O.M. handles options context. Q.U.A.N.T. owns multi-timeframe structure. E.D.G.E. enforces discipline. Configurable watchlist (add / remove / pause / categorize / prioritize). Educational analysis only — no trade execution, no guarantees, no financial advice.</p>
       </div>
       <div class="export-row">
-        <button class="export-btn">Generate Watchlist Report <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Watchlist Report .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Export Per-Ticker Report .txt <span class="arrow">▸</span></button>
-        <button class="export-btn">Manage Tickers <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="runTradingNow(this)">Generate Watchlist Report <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="openAddTickerModal()">+ Add Ticker <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshTradingWatchlist(true)">Show Paused <span class="arrow">▸</span></button>
+        <button class="export-btn" onclick="refreshTradingWatchlist(false)">Refresh <span class="arrow">▸</span></button>
       </div>
-      <div class="module-placeholder">
-        <div class="icon">SPY · QQQ · NVDA</div>
-        <h3>Configurable Watchlist · Educational Only</h3>
-        <p>Ticker table with symbol, name, category, priority, active, options enabled, earnings watch, notes, last report. Categories: Core, Options, Earnings, Momentum, Long-Term, Avoid / Choppy, High Risk. Trading reports include market context, key levels, setup quality, risk notes, invalidation levels, and discipline reminders.</p>
-        <div class="phase-note">Phase 9 · Trading watchlist workflow + 8:15am cron</div>
+      <div id="tradingHost" style="display:flex;flex-direction:column;gap:14px">
+        <div class="module-placeholder"><div class="icon">↻</div><h3>Loading watchlist…</h3></div>
       </div>
     </section>
 
@@ -3268,29 +3260,59 @@ async function routeIntent(text){
 
   // (ideas board intent moved to fast path above)
 
-  // Trading game plan
-  if(/\b(trading|trade|game ?plan|spy|market|premarket|pre[- ]market|0dte)\b/.test(text) && /\b(plan|today|run|give me|brief|game)\b/.test(text)){
-    if(!state.cfg.cronSecret){
-      await say("I need your cron secret to run the trading desk, King Meka. Configure it once in settings.");
-      return;
-    }
-    await say("Pulling today's trading game plan, King Meka. Checking premarket and overnight catalysts. Stand by.");
+  // Security report
+  if(/\b(security|reliability|vault|hawk|mace|health check|system health|ops check|cron health)\b/.test(text) && /\b(run|generate|brief|status|report|check|now|today)\b/.test(text)){
+    switchModule("security");
+    await say("Running V.A.U.L.T., H.A.W.K., and M.A.C.E. on the last seven days. Stand by, King Meka.");
     try{
-      const r = await fetch(`/api/trading?secret=${encodeURIComponent(state.cfg.cronSecret)}`);
+      const r = await fetch("/api/security/generate", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
       const j = await r.json();
-      if(!r.ok || !j.ok){ await say("Trading desk error: "+(j.error||r.status)); return; }
-      const plan = j.plan || {};
-      const setups = (plan.setups||[]).filter(s=>s.verdict==="HUNT");
-      let line = `Today is ${plan.verdict_today||"YELLOW"}. ${plan.market_context} `;
-      if(setups.length){
-        line += `Strongest setup: ${setups[0].ticker} ${setups[0].direction}, ${setups[0].setup_type}. Entry ${setups[0].entry_zone}, stop ${setups[0].stop_loss}. `;
-      } else {
-        line += `No clean HUNT setups today. ${(plan.setups||[]).length} on watch. `;
-      }
-      line += `Kill switch: ${plan.kill_switch||"stop after two losses"}. Email is in your inbox.`;
+      if(!r.ok) throw new Error(j.error || "security failed");
+      let line = `Security verdict ${j.rating}. Health score ${j.health_score} out of one hundred. `;
+      if(j.summary) line += j.summary;
       await say(line);
+      if(state.activeModule === "security") await refreshSecurityCenter();
+    }catch(e){ await say("Security report error: " + e.message); }
+    return;
+  }
+
+  // Trading game plan
+  if(/\b(trading|trade|watchlist|game ?plan|spy|market|premarket|pre[- ]market|0dte|pivot|atom|quant|edge)\b/.test(text) && /\b(plan|today|run|give me|brief|game|generate|report|status|now)\b/.test(text)){
+    switchModule("trading");
+    await say("Pulling today's trading game plan, King Meka. P.I.V.O.T., A.T.O.M., Q.U.A.N.T., and E.D.G.E. are scanning your watchlist. Stand by.");
+    try{
+      const r = await fetch("/api/trading/generate", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
+      const j = await r.json();
+      if(!r.ok || j.ok === false){ await say("Trading desk error: "+(j.error||r.status)); return; }
+      let line = `Regime today is ${j.regime||"unclear"}. ${j.tickers_covered} of ${j.tickers_in_watchlist} tickers analyzed. `;
+      if(j.summary) line += j.summary + " ";
+      line += "Remember: educational only, and protect your green.";
+      await say(line);
+      if(state.activeModule === "trading") await refreshTradingWatchlist();
     }catch(e){ await say("Trading error: "+e.message); }
     return;
+  }
+
+  // Add ticker to watchlist
+  const addRe = /\b(add|put|throw|stick)\b.*\b([a-z]{1,5})\b.*\b(watchlist|list|watch list|tickers)\b/i;
+  const addMatch = text.match(addRe);
+  if(addMatch && /\b(watchlist|watch list|tickers|list)\b/i.test(text)){
+    const sym = addMatch[2].toUpperCase();
+    if(sym.length <= 5 && /^[A-Z]+$/.test(sym)){
+      switchModule("trading");
+      try{
+        const r = await fetch("/api/trading/tickers", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ symbol: sym, company_name: sym, category: "Core Watchlist", priority: "normal" })
+        });
+        const j = await r.json();
+        if(!r.ok) throw new Error(j.error || "add failed");
+        await say(`Added ${sym} to your watchlist, King Meka.`);
+        await refreshTradingWatchlist();
+      }catch(e){ await say(`Couldn't add ${sym}: ${e.message}`); }
+      return;
+    }
   }
 
   // Weekly digest
@@ -3562,6 +3584,8 @@ function switchModule(id){
   if(id === "product")   { refreshProductWorkspace(); }
   if(id === "design")    { refreshDesignWorkspace(); }
   if(id === "marketing") { refreshMarketingWorkspace(); }
+  if(id === "security")  { refreshSecurityCenter(); }
+  if(id === "trading")   { refreshTradingWatchlist(); }
   if(id === "reports")   { refreshReports(); }
   const stage = $("stage");
   if(stage) stage.dataset.activeModule = id;
@@ -3966,6 +3990,264 @@ async function generateDeptDoc(dept, docType, btn){
   }catch(e){
     toast(`${dept} ${docType} generation failed: ` + e.message);
     if(btn){ btn.disabled = false; btn.textContent = "▶ Generate"; }
+  }
+}
+
+/* ---------- SECURITY CENTER ---------- */
+async function refreshSecurityCenter(){
+  const host = $("securityHost");
+  if(!host) return;
+  host.innerHTML = `<div class="module-placeholder"><div class="icon">↻</div><h3>Loading security reports…</h3></div>`;
+  try{
+    // We don't have a /api/security/list endpoint — pull from generated_files instead
+    const r = await fetch("/api/files/list?file_type=security&limit=10");
+    const j = await r.json();
+    const files = j.files || [];
+    const latest = files[0];
+    if(!latest){
+      host.innerHTML = `<div class="module-placeholder"><div class="icon">○</div><h3>No security reports yet</h3><p>The 7:00 AM CT cron runs V.A.U.L.T. · H.A.W.K. · M.A.C.E. automatically. To run it now, click "Run Security Report Now" above.</p></div>`;
+      return;
+    }
+    const latestDate = new Date(latest.created_at).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+    host.innerHTML = `
+      <div class="dept-card" style="cursor:default;border-color:rgba(28,232,255,.35)">
+        <div class="dept-num">Latest · ${latestDate}</div>
+        <div class="dept-name" style="font-size:14px">${escapeHtml(latest.file_name)}</div>
+        <div class="dept-mission" style="min-height:auto;font-family:ui-monospace,monospace;font-size:11px;color:var(--muted)">
+          Compiled by V.A.U.L.T. · H.A.W.K. · M.A.C.E. · Downloads: ${latest.download_count||0}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="export-btn" onclick="downloadFile('${latest.id}')" style="padding:8px 14px">⬇ Download .txt</button>
+          <button class="export-btn" onclick="runSecurityNow(this)" style="padding:8px 14px;border-color:var(--ember);color:var(--ember)">↻ Run New Report Now</button>
+        </div>
+      </div>
+      <div style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;padding:4px 0">History</div>
+      ${files.slice(1).map(f => `
+        <div class="dept-card" style="cursor:default">
+          <div class="dept-num">${new Date(f.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div>
+          <div class="dept-name" style="font-size:12px">${escapeHtml(f.file_name)}</div>
+          <button class="export-btn" onclick="downloadFile('${f.id}')" style="padding:6px 12px;font-size:10px;align-self:flex-start">⬇ .txt</button>
+        </div>`).join("") || `<div style="color:var(--muted);font-size:11px;padding:6px 0">No earlier reports.</div>`}
+    `;
+  }catch(e){
+    host.innerHTML = `<div class="module-placeholder"><div class="icon">!</div><h3>Couldn't load</h3><p>${escapeHtml(e.message)}</p></div>`;
+  }
+}
+
+async function runSecurityNow(btn){
+  if(btn){ btn.disabled = true; btn.textContent = "Running V.A.U.L.T. · H.A.W.K. · M.A.C.E…"; }
+  log("SYS","▶ Running security report on demand…","sys");
+  try{
+    const r = await fetch("/api/security/generate", { method:"POST", headers:{ "Content-Type":"application/json" }, body: "{}" });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || "security generation failed");
+    toast(`Security: ${j.rating} · ${j.health_score}/100 · ${j.tokens||0} tokens`);
+    log("BOSS",`Security report ${j.rating}. ${j.summary||""}`,j.rating==="GREEN"?"ok":j.rating==="RED"?"err":"sys");
+    if(state.activeModule === "security") await refreshSecurityCenter();
+  }catch(e){
+    toast("Security report failed: " + e.message);
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = "Run Security Report Now ▸"; }
+  }
+}
+
+/* ---------- TRADING WATCHLIST ---------- */
+async function refreshTradingWatchlist(showPaused=false){
+  const host = $("tradingHost");
+  if(!host) return;
+  host.innerHTML = `<div class="module-placeholder"><div class="icon">↻</div><h3>Loading watchlist…</h3></div>`;
+  try{
+    const r = await fetch(`/api/trading/tickers${showPaused?"?include_paused=1":""}`);
+    const j = await r.json();
+    const tickers = j.tickers || [];
+    state.tickers = tickers;
+
+    // Pull recent trading files in parallel
+    const fr = await fetch("/api/files/list?file_type=trading&limit=6");
+    const fj = await fr.json();
+    const tradingFiles = fj.files || [];
+    const latestFile = tradingFiles[0];
+
+    const catColor = c => ({
+      "Core Watchlist":"var(--line)",
+      "Options":"var(--ember)",
+      "Earnings":"var(--ok)",
+      "Momentum":"var(--ember)",
+      "Long-Term":"var(--line)",
+      "Avoid":"var(--danger)",
+      "High Risk":"var(--danger)",
+      "Custom":"var(--muted)"
+    })[c] || "var(--line)";
+
+    host.innerHTML = `
+      <div class="dept-card" style="cursor:default;border-color:rgba(255,179,77,.35)">
+        <div class="dept-num">⚠ Educational analysis only · No trades placed · Not financial advice</div>
+        <div class="dept-name" style="font-size:13px">${tickers.length} ticker${tickers.length===1?"":"s"} ${showPaused?"(including paused)":"active"}</div>
+        ${latestFile ? `
+          <div class="dept-mission" style="min-height:auto;font-family:ui-monospace,monospace;font-size:11px;color:var(--muted)">
+            Latest report: ${escapeHtml(latestFile.file_name)} · ${new Date(latestFile.created_at).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="export-btn" onclick="downloadFile('${latestFile.id}')" style="padding:8px 14px">⬇ Download latest .txt</button>
+            <button class="export-btn" onclick="runTradingNow(this)" style="padding:8px 14px;border-color:var(--ember);color:var(--ember)">▶ Generate New Report</button>
+          </div>
+        ` : `
+          <div class="dept-mission" style="min-height:auto;font-size:12px;color:var(--muted)">No reports yet. Generate one to get P.I.V.O.T. · A.T.O.M. · Q.U.A.N.T. · E.D.G.E. analysis.</div>
+          <div style="display:flex;gap:8px">
+            <button class="export-btn" onclick="runTradingNow(this)" style="padding:8px 14px;border-color:var(--ember);color:var(--ember)">▶ Generate First Report</button>
+          </div>`}
+      </div>
+
+      ${tickers.length === 0 ? `<div class="module-placeholder"><div class="icon">+</div><h3>Watchlist is empty</h3><p>Click "+ Add Ticker" above to start populating your watchlist.</p></div>` : `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">
+        ${tickers.map(t => `
+          <div class="dept-card" style="cursor:default;opacity:${t.active?1:0.55}">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <div style="font-family:ui-monospace,monospace;font-size:18px;font-weight:900;letter-spacing:.06em;color:var(--line)">${escapeHtml(t.symbol)}</div>
+              <span style="padding:3px 9px;font-family:ui-monospace,monospace;font-weight:900;font-size:9px;letter-spacing:.18em;background:${catColor(t.category)};color:#021018">${escapeHtml((t.category||"").toUpperCase())}</span>
+            </div>
+            <div class="dept-name" style="font-size:12px;color:#fff;margin-top:6px">${escapeHtml(t.company_name||t.symbol)}</div>
+            <div class="dept-mission" style="min-height:auto;font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.06em">
+              priority ${t.priority||"normal"} · ${t.options_enabled?"OPT ✓":"opt ✗"} · ${t.earnings_watch?"EARN ✓":"earn ✗"} · ${t.report_frequency||"daily"}
+              ${t.last_report_date?`<br>last report ${new Date(t.last_report_date).toLocaleDateString("en-US",{month:"short",day:"numeric"})}`:""}
+              ${t.notes?`<br><span style="color:var(--ember)">${escapeHtml((t.notes||"").slice(0,140))}</span>`:""}
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="export-btn" onclick="toggleTicker('${t.id}',${!t.active})" style="padding:6px 10px;font-size:10px">${t.active?"⏸ Pause":"▶ Resume"}</button>
+              <button class="export-btn" onclick="editTicker('${t.id}')" style="padding:6px 10px;font-size:10px">✎ Edit</button>
+              <button class="export-btn" onclick="deleteTicker('${t.id}','${escapeHtml(t.symbol)}')" style="padding:6px 10px;font-size:10px;color:var(--danger);border-color:var(--danger)">✕</button>
+            </div>
+          </div>`).join("")}
+      </div>`}
+    `;
+  }catch(e){
+    host.innerHTML = `<div class="module-placeholder"><div class="icon">!</div><h3>Couldn't load</h3><p>${escapeHtml(e.message)}</p></div>`;
+  }
+}
+
+async function runTradingNow(btn){
+  if(btn){ btn.disabled = true; btn.textContent = "Running P.I.V.O.T. · A.T.O.M. · Q.U.A.N.T. · E.D.G.E…"; }
+  log("SYS","▶ Running trading watchlist report on demand…","sys");
+  try{
+    const r = await fetch("/api/trading/generate", { method:"POST", headers:{ "Content-Type":"application/json" }, body: "{}" });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || "trading generation failed");
+    if(j.ok === false) throw new Error(j.error || "no active tickers");
+    toast(`Trading: ${j.regime||"—"} · ${j.tickers_covered}/${j.tickers_in_watchlist} tickers · ${j.tokens||0} tokens`);
+    log("BOSS",`Trading report ${j.regime||""}. ${j.summary||""}`,"ok");
+    if(state.activeModule === "trading") await refreshTradingWatchlist();
+  }catch(e){
+    toast("Trading report failed: " + e.message);
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = "Generate Watchlist Report ▸"; }
+  }
+}
+
+async function toggleTicker(id, makeActive){
+  try{
+    const r = await fetch(`/api/trading/tickers?id=${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ active: makeActive })
+    });
+    if(!r.ok){ const j = await r.json(); throw new Error(j.error||"patch failed"); }
+    toast(makeActive ? "Ticker resumed" : "Ticker paused");
+    await refreshTradingWatchlist(state.tickers?.some(t=>!t.active));
+  }catch(e){ toast("Update failed: " + e.message); }
+}
+
+async function deleteTicker(id, symbol){
+  if(!confirm(`Remove ${symbol} from watchlist?`)) return;
+  try{
+    const r = await fetch(`/api/trading/tickers?id=${id}`, { method: "DELETE" });
+    if(!r.ok){ const j = await r.json(); throw new Error(j.error||"delete failed"); }
+    toast(`Removed ${symbol}`);
+    await refreshTradingWatchlist();
+  }catch(e){ toast("Delete failed: " + e.message); }
+}
+
+function editTicker(id){
+  const t = (state.tickers||[]).find(x => x.id === id);
+  if(!t) return;
+  openAddTickerModal(t);
+}
+
+function openAddTickerModal(existing){
+  const isEdit = !!existing;
+  const t = existing || {};
+  const html = `
+    <div id="tickerModal" style="position:fixed;inset:0;background:rgba(2,4,11,.85);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div style="max-width:480px;width:100%;background:#02060f;border:1px solid var(--line);padding:24px;clip-path:polygon(0 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%)">
+        <div style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.22em;color:var(--line);text-transform:uppercase">${isEdit?"Edit Ticker":"Add Ticker to Watchlist"}</div>
+        <h2 style="margin:6px 0 18px;font-size:20px;color:#fff">${isEdit?escapeHtml(t.symbol):"New ticker"}</h2>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <label style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.14em">SYMBOL
+            <input id="tmSym" type="text" value="${escapeHtml(t.symbol||"")}" ${isEdit?"disabled":""} style="display:block;width:100%;margin-top:4px;background:rgba(3,14,25,.8);border:1px solid var(--line-soft);color:#fff;padding:8px 10px;font-family:ui-monospace,monospace;text-transform:uppercase" />
+          </label>
+          <label style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.14em">COMPANY NAME
+            <input id="tmName" type="text" value="${escapeHtml(t.company_name||"")}" style="display:block;width:100%;margin-top:4px;background:rgba(3,14,25,.8);border:1px solid var(--line-soft);color:#fff;padding:8px 10px" />
+          </label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <label style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.14em">CATEGORY
+              <select id="tmCat" style="display:block;width:100%;margin-top:4px;background:rgba(3,14,25,.8);border:1px solid var(--line-soft);color:#fff;padding:8px 10px">
+                ${["Core Watchlist","Options","Earnings","Momentum","Long-Term","Avoid","High Risk","Custom"].map(c => `<option value="${c}" ${(t.category||"Core Watchlist")===c?"selected":""}>${c}</option>`).join("")}
+              </select>
+            </label>
+            <label style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.14em">PRIORITY
+              <select id="tmPri" style="display:block;width:100%;margin-top:4px;background:rgba(3,14,25,.8);border:1px solid var(--line-soft);color:#fff;padding:8px 10px">
+                ${["high","normal","low"].map(p => `<option value="${p}" ${(t.priority||"normal")===p?"selected":""}>${p}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;font-family:ui-monospace,monospace;font-size:11px;color:#fff">
+            <label><input id="tmOpt" type="checkbox" ${t.options_enabled?"checked":""}/> Options enabled</label>
+            <label><input id="tmEarn" type="checkbox" ${t.earnings_watch?"checked":""}/> Earnings watch</label>
+            <label><input id="tmMorn" type="checkbox" ${t.include_in_morning_report!==false?"checked":""}/> In morning report</label>
+            ${isEdit?`<label><input id="tmAct" type="checkbox" ${t.active!==false?"checked":""}/> Active</label>`:""}
+          </div>
+          <label style="font-family:ui-monospace,monospace;font-size:10px;color:var(--muted);letter-spacing:.14em">NOTES (Meka's context for this ticker)
+            <textarea id="tmNotes" rows="3" style="display:block;width:100%;margin-top:4px;background:rgba(3,14,25,.8);border:1px solid var(--line-soft);color:#fff;padding:8px 10px;font-family:Inter,sans-serif;font-size:12px;resize:vertical">${escapeHtml(t.notes||"")}</textarea>
+          </label>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end">
+          <button class="export-btn" onclick="document.getElementById('tickerModal').remove()" style="padding:8px 14px">Cancel</button>
+          <button class="export-btn" onclick="saveTickerFromModal('${t.id||""}')" style="padding:8px 14px;border-color:var(--ember);color:var(--ember)">${isEdit?"Save Changes":"Add to Watchlist"}</button>
+        </div>
+      </div>
+    </div>`;
+  const div = document.createElement("div");
+  div.innerHTML = html;
+  document.body.appendChild(div.firstElementChild);
+}
+
+async function saveTickerFromModal(id){
+  const sym = ($("tmSym")?.value || "").toUpperCase().trim();
+  if(!sym){ toast("Symbol is required"); return; }
+  const body = {
+    symbol: sym,
+    company_name: $("tmName")?.value || sym,
+    category: $("tmCat")?.value || "Core Watchlist",
+    priority: $("tmPri")?.value || "normal",
+    options_enabled: !!$("tmOpt")?.checked,
+    earnings_watch: !!$("tmEarn")?.checked,
+    include_in_morning_report: !!$("tmMorn")?.checked,
+    notes: $("tmNotes")?.value || ""
+  };
+  if(id && $("tmAct")) body.active = !!$("tmAct").checked;
+  try{
+    const url = id ? `/api/trading/tickers?id=${id}` : "/api/trading/tickers";
+    const r = await fetch(url, {
+      method: id ? "PATCH" : "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || "save failed");
+    $("tickerModal")?.remove();
+    toast(id ? `Updated ${sym}` : `Added ${sym} to watchlist`);
+    await refreshTradingWatchlist();
+  }catch(e){
+    toast("Save failed: " + e.message);
   }
 }
 
