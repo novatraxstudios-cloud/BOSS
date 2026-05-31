@@ -109,6 +109,37 @@ async function fetchAlphaVantageQuote(symbol){
   } catch { return null; }
 }
 
+async function fetchStooqQuote(symbol){
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 4500);
+    const url = `https://stooq.com/q/l/?s=${encodeURIComponent(symbol.toLowerCase())}.us&f=sd2t2ohlcvp&h&e=csv`;
+    const r = await fetch(url, { signal: ctrl.signal, headers:{ "User-Agent":"Mozilla/5.0", "Accept":"text/csv,*/*" } });
+    clearTimeout(t);
+    if(!r.ok) return null;
+    const text = (await r.text()).trim();
+    const lines = text.split(/\r?\n/);
+    if(lines.length < 2) return null;
+    const headerCols = lines[0].split(",").map(s=>s.trim().toLowerCase());
+    const valueCols  = lines[1].split(",").map(s=>s.trim());
+    const get = (name)=>{ const i = headerCols.indexOf(name); return i>=0 ? valueCols[i] : null; };
+    const closeRaw = get("close");
+    if(!closeRaw || closeRaw === "N/D") return null;
+    const price = Number(parseFloat(closeRaw).toFixed(2));
+    const prevRaw = get("prevclose") || get("close.1");
+    const prevClose = prevRaw && prevRaw !== "N/D" ? Number(parseFloat(prevRaw).toFixed(2)) : null;
+    const change    = (prevClose != null) ? Number((price - prevClose).toFixed(2)) : null;
+    const changePct = (prevClose != null && prevClose !== 0) ? Number(((price - prevClose) / prevClose * 100).toFixed(2)) : null;
+    return {
+      symbol, price, prev_close: prevClose, change, change_pct: changePct,
+      day_open: null, day_high: null, day_low: null,
+      fifty_two_week_high: null, fifty_two_week_low: null,
+      as_of: new Date().toISOString(),
+      source: "stooq"
+    };
+  } catch { return null; }
+}
+
 async function fetchYahooQuote(symbol){
   try {
     const ctrl = new AbortController();
@@ -180,6 +211,8 @@ async function fetchOneWithFallback(symbol){
     const a = await fetchAlphaVantageQuote(symbol);
     if(a) return a;
   }
+  const s = await fetchStooqQuote(symbol);
+  if(s) return s;
   return await fetchYahooQuote(symbol);
 }
 
