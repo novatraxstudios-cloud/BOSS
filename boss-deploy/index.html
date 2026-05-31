@@ -3263,9 +3263,15 @@ async function routeIntent(text){
   // Security report
   if(/\b(security|reliability|vault|hawk|mace|health check|system health|ops check|cron health)\b/.test(text) && /\b(run|generate|brief|status|report|check|now|today)\b/.test(text)){
     switchModule("security");
+    const secret = ensureCronSecret();
+    if(!secret){ await say("I need your cron secret first, King Meka. Configure it once in settings."); return; }
     await say("Running V.A.U.L.T., H.A.W.K., and M.A.C.E. on the last seven days. Stand by, King Meka.");
     try{
-      const r = await fetch("/api/security/generate", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
+      const r = await fetch(`/api/security/generate?secret=${encodeURIComponent(secret)}`, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json", "x-cron-secret": secret },
+        body:"{}"
+      });
       const j = await r.json();
       if(!r.ok) throw new Error(j.error || "security failed");
       let line = `Security verdict ${j.rating}. Health score ${j.health_score} out of one hundred. `;
@@ -3279,9 +3285,15 @@ async function routeIntent(text){
   // Trading game plan
   if(/\b(trading|trade|watchlist|game ?plan|spy|market|premarket|pre[- ]market|0dte|pivot|atom|quant|edge)\b/.test(text) && /\b(plan|today|run|give me|brief|game|generate|report|status|now)\b/.test(text)){
     switchModule("trading");
+    const secret = ensureCronSecret();
+    if(!secret){ await say("I need your cron secret first, King Meka."); return; }
     await say("Pulling today's trading game plan, King Meka. P.I.V.O.T., A.T.O.M., Q.U.A.N.T., and E.D.G.E. are scanning your watchlist. Stand by.");
     try{
-      const r = await fetch("/api/trading/generate", { method:"POST", headers:{ "Content-Type":"application/json" }, body:"{}" });
+      const r = await fetch(`/api/trading/generate?secret=${encodeURIComponent(secret)}`, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json", "x-cron-secret": secret },
+        body:"{}"
+      });
       const j = await r.json();
       if(!r.ok || j.ok === false){ await say("Trading desk error: "+(j.error||r.status)); return; }
       let line = `Regime today is ${j.regime||"unclear"}. ${j.tickers_covered} of ${j.tickers_in_watchlist} tickers analyzed. `;
@@ -4034,11 +4046,26 @@ async function refreshSecurityCenter(){
   }
 }
 
+function ensureCronSecret(){
+  let secret = state.cfg.cronSecret;
+  if(!secret){
+    secret = prompt("Enter your CRON_SECRET (one time, saved locally):");
+    if(secret){ state.cfg.cronSecret = secret; persist(); }
+  }
+  return secret;
+}
+
 async function runSecurityNow(btn){
+  const secret = ensureCronSecret();
+  if(!secret){ toast("Need CRON_SECRET to run security report."); return; }
   if(btn){ btn.disabled = true; btn.textContent = "Running V.A.U.L.T. · H.A.W.K. · M.A.C.E…"; }
   log("SYS","▶ Running security report on demand…","sys");
   try{
-    const r = await fetch("/api/security/generate", { method:"POST", headers:{ "Content-Type":"application/json" }, body: "{}" });
+    const r = await fetch(`/api/security/generate?secret=${encodeURIComponent(secret)}`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "x-cron-secret": secret },
+      body: "{}"
+    });
     const j = await r.json();
     if(!r.ok) throw new Error(j.error || "security generation failed");
     toast(`Security: ${j.rating} · ${j.health_score}/100 · ${j.tokens||0} tokens`);
@@ -4126,10 +4153,16 @@ async function refreshTradingWatchlist(showPaused=false){
 }
 
 async function runTradingNow(btn){
+  const secret = ensureCronSecret();
+  if(!secret){ toast("Need CRON_SECRET to run trading report."); return; }
   if(btn){ btn.disabled = true; btn.textContent = "Running P.I.V.O.T. · A.T.O.M. · Q.U.A.N.T. · E.D.G.E…"; }
   log("SYS","▶ Running trading watchlist report on demand…","sys");
   try{
-    const r = await fetch("/api/trading/generate", { method:"POST", headers:{ "Content-Type":"application/json" }, body: "{}" });
+    const r = await fetch(`/api/trading/generate?secret=${encodeURIComponent(secret)}`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "x-cron-secret": secret },
+      body: "{}"
+    });
     const j = await r.json();
     if(!r.ok) throw new Error(j.error || "trading generation failed");
     if(j.ok === false) throw new Error(j.error || "no active tickers");
