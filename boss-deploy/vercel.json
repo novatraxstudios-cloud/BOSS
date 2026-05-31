@@ -15,7 +15,9 @@
     }
   ],
   "crons": [
-    { "path": "/api/briefing", "schedule": "0 13 * * *" },
-    { "path": "/api/digest",   "schedule": "0 14 * * 0" }
+    { "path": "/api/security/generate", "schedule": "0 12 * * *" },
+    { "path": "/api/briefing",          "schedule": "0 13 * * *" },
+    { "path": "/api/trading/generate",  "schedule": "15 13 * * 1-5" },
+    { "path": "/api/digest",            "schedule": "0 14 * * 0" }
   ]
 }
