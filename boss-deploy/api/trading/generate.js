@@ -38,6 +38,78 @@ async function sbPatch(table, filter, data){
   }).catch(()=>{});
 }
 
+/* ---------- LIVE PRICE FEED (Yahoo Finance chart endpoint, no API key) ---------- */
+async function fetchYahooQuote(symbol){
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 4000);
+    const r = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=10d`,
+      {
+        signal: ctrl.signal,
+        headers: {
+          // Yahoo blocks the default node UA; pretend to be a browser.
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
+          "Accept": "application/json"
+        }
+      }
+    );
+    clearTimeout(t);
+    if(!r.ok) return null;
+    const j = await r.json();
+    const res = j?.chart?.result?.[0];
+    if(!res) return null;
+    const meta = res.meta || {};
+    const ts = res.timestamp || [];
+    const q  = res.indicators?.quote?.[0] || {};
+    const opens  = q.open  || [];
+    const highs  = q.high  || [];
+    const lows   = q.low   || [];
+    const closes = q.close || [];
+    const vols   = q.volume|| [];
+    const last5 = ts.map((t,i)=>({
+      date: new Date(t*1000).toISOString().slice(0,10),
+      o: opens[i]  != null ? Number(opens[i].toFixed(2))  : null,
+      h: highs[i]  != null ? Number(highs[i].toFixed(2))  : null,
+      l: lows[i]   != null ? Number(lows[i].toFixed(2))   : null,
+      c: closes[i] != null ? Number(closes[i].toFixed(2)) : null,
+      v: vols[i]   || null
+    })).filter(d => d.c != null).slice(-7);
+    const price     = Number((meta.regularMarketPrice ?? closes.filter(Boolean).slice(-1)[0])?.toFixed?.(2)) || null;
+    const prevClose = Number((meta.chartPreviousClose ?? meta.previousClose)?.toFixed?.(2)) || null;
+    const change    = (price != null && prevClose != null) ? Number((price - prevClose).toFixed(2)) : null;
+    const changePct = (price != null && prevClose != null && prevClose !== 0) ? Number(((price - prevClose) / prevClose * 100).toFixed(2)) : null;
+    return {
+      symbol: meta.symbol || symbol,
+      price,
+      prev_close: prevClose,
+      change, change_pct: changePct,
+      day_high: meta.regularMarketDayHigh != null ? Number(meta.regularMarketDayHigh.toFixed(2)) : null,
+      day_low:  meta.regularMarketDayLow  != null ? Number(meta.regularMarketDayLow.toFixed(2))  : null,
+      fifty_two_week_high: meta.fiftyTwoWeekHigh != null ? Number(meta.fiftyTwoWeekHigh.toFixed(2)) : null,
+      fifty_two_week_low:  meta.fiftyTwoWeekLow  != null ? Number(meta.fiftyTwoWeekLow.toFixed(2))  : null,
+      volume: meta.regularMarketVolume || null,
+      currency: meta.currency || "USD",
+      exchange: meta.exchangeName || null,
+      market_state: meta.marketState || null, // PRE, REGULAR, POST, CLOSED
+      as_of: new Date().toISOString(),
+      ohlc_recent: last5
+    };
+  } catch { return null; }
+}
+
+async function fetchYahooQuotes(symbols){
+  const out = {};
+  // Parallel but cap concurrency by chunks of 10 to be polite
+  const chunks = [];
+  for(let i=0;i<symbols.length;i+=10) chunks.push(symbols.slice(i,i+10));
+  for(const chunk of chunks){
+    const results = await Promise.all(chunk.map(s => fetchYahooQuote(s)));
+    chunk.forEach((s,i)=>{ if(results[i]) out[s] = results[i]; });
+  }
+  return out;
+}
+
 async function tavilySearch(query, depth="basic", max_results=4){
   if (!process.env.TAVILY_API_KEY) return [];
   try {
@@ -81,7 +153,12 @@ EDUCATIONAL ANALYSIS ONLY. You DO NOT place trades. You DO NOT give buy/sell rec
 Frame every signal as "for educational consideration." Always include invalidation. Always include risk.
 You are reading Meka's actual trading style: 2-min Trend Containment Candle, ~61% win rate, SPY 0DTE focus.
 Meka's rules: Green is Sacred · Precision over Activity · Stop after two losses · No setup no trade.
-Meka's known weakness: losses larger than winners, needs discipline reminders. Surface this when relevant.`;
+Meka's known weakness: losses larger than winners, needs discipline reminders. Surface this when relevant.
+
+CRITICAL: The payload contains a "live_quotes" object with REAL prices pulled seconds before this call.
+You MUST anchor every key_levels, pivot, support, resistance, and invalidation to the live_quotes prices.
+NEVER invent price levels. NEVER use prices from your training data. If live_quotes is missing for a ticker, say "price feed unavailable" in that ticker's notes and skip numeric levels for it.
+Every per_ticker entry MUST include current_price and previous_close copied exactly from live_quotes.`;
 
 const SYSTEM = `You are the Trading Intelligence quartet for B.O.S.S. Operating System.
 
@@ -132,6 +209,9 @@ Output schema:
       "symbol": "",
       "category": "",
       "priority": "high|normal|low",
+      "current_price": 0,
+      "previous_close": 0,
+      "change_pct": 0,
       "setup_quality": "A|B|C|D",
       "directional_read": "long-bias|short-bias|neutral|avoid-today",
       "key_levels": {"support":[], "resistance":[], "pivot":""},
@@ -202,8 +282,12 @@ divider("5. Per-Ticker Analysis")
   ];
 
   for(const t of (c.per_ticker||[])){
+    const px  = t.current_price != null ? `$${Number(t.current_price).toFixed(2)}` : "—";
+    const pc  = t.previous_close != null ? `$${Number(t.previous_close).toFixed(2)}` : "—";
+    const chg = t.change_pct != null ? `${Number(t.change_pct) >= 0 ? "+" : ""}${Number(t.change_pct).toFixed(2)}%` : "—";
     lines.push(`
 ${t.symbol || "?"} · ${t.category || ""} · priority ${t.priority || "normal"} · setup ${t.setup_quality || "—"}
+  Live price:     ${px}   (prev close ${pc} · ${chg})
   Bias:           ${t.directional_read || "—"}
   Pivot:          ${t.key_levels?.pivot || "—"}
   Support:        ${(t.key_levels?.support||[]).join(", ") || "—"}
@@ -305,8 +389,11 @@ export default async function handler(req, res){
 
     const symbols = tickers.map(t => t.symbol);
 
-    // 2. Scout market news via Tavily
-    const evidence = await scoutMarketNews(symbols);
+    // 2. Live price feed + Tavily news (parallel)
+    const [liveQuotes, evidence] = await Promise.all([
+      fetchYahooQuotes(symbols),
+      scoutMarketNews(symbols)
+    ]);
 
     // 3. Run quartet analysis (single OpenAI call)
     const payload = {
@@ -327,6 +414,7 @@ export default async function handler(req, res){
         notes: t.notes,
         strategy_relevance: t.strategy_relevance
       })),
+      live_quotes: liveQuotes,          // <-- the authoritative price source
       market_evidence: evidence
     };
 
@@ -334,6 +422,19 @@ export default async function handler(req, res){
     const llm = await callOpenAI(SYSTEM, payload);
     const elapsed = Date.now() - t0;
     const report = llm.data;
+
+    // Defensive post-processor: force live_quotes prices into every per_ticker entry
+    // so the model can never drift back to its training-data prices.
+    if(Array.isArray(report.per_ticker)){
+      for(const pt of report.per_ticker){
+        const q = liveQuotes[pt.symbol];
+        if(q){
+          pt.current_price  = q.price;
+          pt.previous_close = q.prev_close;
+          pt.change_pct     = q.change_pct;
+        }
+      }
+    }
 
     // 4. Persist trading_reports row
     const row = await sbInsert("trading_reports", {
@@ -350,8 +451,19 @@ export default async function handler(req, res){
       full_payload: report
     });
 
-    // 5. Generate .txt file
-    const txt = formatTxt(report);
+    // 5. Generate .txt file (with a live-prices header block prepended)
+    const quoteRows = Object.values(liveQuotes)
+      .sort((a,b)=>(a.symbol||"").localeCompare(b.symbol||""))
+      .map(q => `  ${(q.symbol||"").padEnd(6)} $${(q.price ?? 0).toFixed(2).padStart(9)}   prev $${(q.prev_close ?? 0).toFixed(2).padStart(9)}   ${(q.change_pct >= 0 ? "+" : "")}${(q.change_pct ?? 0).toFixed(2)}%   52w ${q.fifty_two_week_low ?? "—"} / ${q.fifty_two_week_high ?? "—"}`)
+      .join("\n");
+    const missing = symbols.filter(s => !liveQuotes[s]);
+    const quoteHeader = `\n================================================================
+LIVE PRICE FEED (Yahoo) · as of ${new Date().toISOString()}
+================================================================
+${quoteRows || "(no live quotes — Yahoo unavailable)"}
+${missing.length ? `\nMissing from feed: ${missing.join(", ")}` : ""}
+`;
+    const txt = formatTxt(report).replace("EDUCATIONAL ANALYSIS ONLY. NOT FINANCIAL ADVICE.\nNO TRADES ARE PLACED BY THIS SYSTEM.", `EDUCATIONAL ANALYSIS ONLY. NOT FINANCIAL ADVICE.\nNO TRADES ARE PLACED BY THIS SYSTEM.\n${quoteHeader}`);
     const fileName = `07_trading_watchlist_${new Date().toISOString().slice(0,10)}.txt`;
     const fileRow = await sbInsert("generated_files", {
       file_name: fileName,
