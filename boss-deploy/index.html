@@ -4110,6 +4110,7 @@ async function refreshTradingWatchlist(showPaused=false){
       <div class="dept-card" style="cursor:default;border-color:rgba(255,179,77,.35)">
         <div class="dept-num">⚠ Educational analysis only · No trades placed · Not financial advice</div>
         <div class="dept-name" style="font-size:13px">${tickers.length} ticker${tickers.length===1?"":"s"} ${showPaused?"(including paused)":"active"}</div>
+        <div id="quoteStatusBanner" style="font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.06em;color:var(--muted);padding:6px 0">— checking price feeds…</div>
         ${latestFile ? `
           <div class="dept-mission" style="min-height:auto;font-family:ui-monospace,monospace;font-size:11px;color:var(--muted)">
             Latest report: ${escapeHtml(latestFile.file_name)} · ${new Date(latestFile.created_at).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}
@@ -4163,11 +4164,18 @@ async function loadLiveQuotes(symbols){
     const r = await fetch(`/api/trading/quotes?symbols=${encodeURIComponent(symbols.join(","))}`);
     const j = await r.json();
     const quotes = j.quotes || {};
+    const diag = j.diagnostics || {};
+    state.quoteDiag = j; // keep around so we can show a status banner
     for(const sym of symbols){
       const slot = document.querySelector(`[data-tickerquote="${sym}"]`);
       if(!slot) continue;
       const q = quotes[sym];
-      if(!q){ slot.innerHTML = `<span style="color:var(--danger)">— price feed unavailable</span>`; continue; }
+      if(!q){
+        const trail = (diag[sym]||[]).map(t => `${t.source}:${t.status}`).join(" → ") || "no sources tried";
+        slot.innerHTML = `<span style="color:var(--danger)" title="${trail}">— price feed unavailable</span>
+                          <div style="color:var(--muted);font-size:10px;font-family:ui-monospace,monospace;margin-top:2px">${trail}</div>`;
+        continue;
+      }
       const up = (q.change_pct||0) >= 0;
       const arrow = up ? "▲" : "▼";
       const color = up ? "var(--ok)" : "var(--danger)";
@@ -4175,8 +4183,20 @@ async function loadLiveQuotes(symbols){
       slot.innerHTML = `
         <span style="color:#fff;font-size:16px;font-weight:900">$${(q.price ?? 0).toFixed(2)}</span>
         <span style="color:${color};margin-left:8px">${arrow} ${sign}${(q.change_pct ?? 0).toFixed(2)}%</span>
-        <span style="color:var(--muted);margin-left:8px;font-size:11px">prev $${(q.prev_close ?? 0).toFixed(2)}</span>
+        <span style="color:var(--muted);margin-left:8px;font-size:11px">prev $${(q.prev_close ?? 0).toFixed(2)} · ${q.source||"?"}</span>
       `;
+    }
+    // Status banner with per-source counts and missing tickers
+    const banner = document.getElementById("quoteStatusBanner");
+    if(banner){
+      const srcs = j.sources || {};
+      const failed = j.failed_symbols || [];
+      const env = j.env || {};
+      const envLine = `keys: ${env.finnhub?"finnhub ✓":"finnhub ✗"} · ${env.alphavantage?"alphavantage ✓":"alphavantage ✗"} · yahoo ✓`;
+      const srcLine = Object.entries(srcs).map(([k,v])=>`${k} ${v}`).join(" · ") || "no live quotes";
+      banner.innerHTML = `<span style="color:${failed.length?"var(--ember)":"var(--ok)"}">${srcLine}</span>
+        ${failed.length?`<span style="color:var(--danger);margin-left:10px">missing: ${failed.join(", ")}</span>`:""}
+        <span style="color:var(--muted);margin-left:10px">${envLine}</span>`;
     }
   }catch(e){
     document.querySelectorAll("[data-tickerquote]").forEach(el=>{
