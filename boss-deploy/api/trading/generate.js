@@ -357,7 +357,7 @@ export default async function handler(req, res){
       file_name: fileName,
       file_type: "trading",
       content: txt,
-      dept_id: "trade",
+      dept_id: "trd",
       agent_id: "PIVOT"
     });
 
@@ -376,7 +376,7 @@ export default async function handler(req, res){
     // 8. Ops log
     try {
       await sbInsert("ops_logs", {
-        agent_id: "PIVOT", dept_id: "trade",
+        agent_id: "PIVOT", dept_id: "trd",
         action: "trading_report", status: "completed",
         duration_ms: elapsed, tokens_used: llm.usage?.total_tokens || 0,
         api_cost_estimate: ((llm.usage?.total_tokens || 0) / 1e6) * 0.15,
