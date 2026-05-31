@@ -39,11 +39,40 @@ async function sbPatch(table, filter, data){
 }
 
 /* ---------- LIVE PRICE FEED ----------
-   Primary:  Alpha Vantage GLOBAL_QUOTE  (set ALPHA_VANTAGE_API_KEY)
-   Fallback: Yahoo Finance chart endpoint (no key, per-symbol fallback when AV
-             is rate-limited, returns Information/Note, or doesn't carry the
-             ticker). 52-week range comes from Yahoo only.
+   Order: Finnhub  →  Alpha Vantage  →  Yahoo  (first success wins).
+   Yahoo also fills 52w range when the winner doesn't carry it.
    --------------------------------------- */
+async function fetchFinnhubQuote(symbol){
+  const key = process.env.FINNHUB_API_KEY;
+  if(!key) return null;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), 5000);
+    const r = await fetch(
+      `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(key)}`,
+      { signal: ctrl.signal, headers: { "Accept":"application/json" } }
+    );
+    clearTimeout(t);
+    if(!r.ok) return null;
+    const j = await r.json();
+    if(!j || j.c == null || (j.c === 0 && j.pc === 0)) return null;
+    const price     = Number(Number(j.c).toFixed(2));
+    const prevClose = Number(Number(j.pc).toFixed(2));
+    const change    = j.d  != null ? Number(Number(j.d).toFixed(2))  : Number((price - prevClose).toFixed(2));
+    const changePct = j.dp != null ? Number(Number(j.dp).toFixed(2)) : (prevClose ? Number(((price-prevClose)/prevClose*100).toFixed(2)) : null);
+    return {
+      symbol, price, prev_close: prevClose, change, change_pct: changePct,
+      day_open: j.o != null ? Number(Number(j.o).toFixed(2)) : null,
+      day_high: j.h != null ? Number(Number(j.h).toFixed(2)) : null,
+      day_low:  j.l != null ? Number(Number(j.l).toFixed(2)) : null,
+      fifty_two_week_high: null,
+      fifty_two_week_low:  null,
+      as_of: new Date().toISOString(),
+      source: "finnhub"
+    };
+  } catch { return null; }
+}
+
 async function fetchAlphaVantageQuote(symbol){
   const key = process.env.ALPHA_VANTAGE_API_KEY;
   if(!key) return null;
@@ -57,7 +86,6 @@ async function fetchAlphaVantageQuote(symbol){
     clearTimeout(t);
     if(!r.ok) return null;
     const j = await r.json();
-    // Free tier rate-limit / quota responses come back as Information or Note
     if(j["Information"] || j["Note"] || j["Error Message"]) return null;
     const q = j["Global Quote"];
     if(!q || !q["05. price"]) return null;
@@ -141,38 +169,37 @@ async function fetchYahooQuote(symbol){
   } catch { return null; }
 }
 
-/* Combined fetcher: Alpha Vantage first (current price), Yahoo for any
-   gaps + always for 52w range. Yahoo numbers are merged into AV when AV
-   succeeds, so 52w range is always populated when possible. */
+/* Combined fetcher: Finnhub → Alpha Vantage → Yahoo. First success wins per
+   symbol. Yahoo also fills 52w range when the winner lacks it. */
+async function fetchOneWithFallback(symbol){
+  if(process.env.FINNHUB_API_KEY){
+    const f = await fetchFinnhubQuote(symbol);
+    if(f) return f;
+  }
+  if(process.env.ALPHA_VANTAGE_API_KEY){
+    const a = await fetchAlphaVantageQuote(symbol);
+    if(a) return a;
+  }
+  return await fetchYahooQuote(symbol);
+}
+
 async function fetchQuotes(symbols){
   const out = {};
-  const haveAV = !!process.env.ALPHA_VANTAGE_API_KEY;
+  const winners = await Promise.all(symbols.map(fetchOneWithFallback));
+  symbols.forEach((s,i)=>{ if(winners[i]) out[s] = winners[i]; });
 
-  // Step 1: try Alpha Vantage in parallel
-  if(haveAV){
-    const avResults = await Promise.all(symbols.map(fetchAlphaVantageQuote));
-    symbols.forEach((s,i)=>{ if(avResults[i]) out[s] = avResults[i]; });
-  }
-
-  // Step 2: Yahoo fills gaps + adds 52w range when AV is missing it
-  const need52w = Object.keys(out).filter(s => out[s].fifty_two_week_high == null);
-  const missing = symbols.filter(s => !out[s]);
-  const yahooTargets = [...new Set([...missing, ...need52w])];
-  if(yahooTargets.length){
-    const yResults = await Promise.all(yahooTargets.map(fetchYahooQuote));
-    yahooTargets.forEach((s,i)=>{
+  // Enrich any non-Yahoo winner with 52w range from Yahoo
+  const need52w = Object.keys(out).filter(s => out[s].fifty_two_week_high == null && out[s].source !== "yahoo");
+  if(need52w.length){
+    const yResults = await Promise.all(need52w.map(fetchYahooQuote));
+    need52w.forEach((s,i)=>{
       const y = yResults[i];
       if(!y) return;
-      if(out[s]){
-        // Merge: keep AV current price, take 52w + ohlc_recent + market_state from Yahoo
-        out[s].fifty_two_week_high = y.fifty_two_week_high;
-        out[s].fifty_two_week_low  = y.fifty_two_week_low;
-        if(!out[s].ohlc_recent) out[s].ohlc_recent = y.ohlc_recent;
-        if(!out[s].market_state) out[s].market_state = y.market_state;
-        if(!out[s].exchange)     out[s].exchange = y.exchange;
-      } else {
-        out[s] = y;
-      }
+      out[s].fifty_two_week_high = y.fifty_two_week_high;
+      out[s].fifty_two_week_low  = y.fifty_two_week_low;
+      if(!out[s].ohlc_recent)  out[s].ohlc_recent  = y.ohlc_recent;
+      if(!out[s].market_state) out[s].market_state = y.market_state;
+      if(!out[s].exchange)     out[s].exchange     = y.exchange;
     });
   }
   return out;
